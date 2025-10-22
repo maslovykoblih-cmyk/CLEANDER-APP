@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="UTF-8">
+<title>Úklidový týdenní kalendář</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<style>
+body { font-family: Arial,sans-serif; background:#f0f4f8; margin:0; padding:20px; }
+.container { max-width: 1200px; margin:0 auto; }
+h1 { text-align:center; color:#333; margin-bottom:20px; }
+.week-header { display:flex; justify-content:space-between; margin-bottom:15px; font-weight:bold; }
+.week-day-box { flex:1; text-align:center; margin:0 2px; }
+.week-day { padding:8px 0; background:#dbeeff; border-radius:6px; }
+.week-day-summary {
+  font-size: 12px;
+  background: #e3f2fd;
+  border-radius: 4px;
+  margin-top: 4px;
+  padding: 2px 0;
+  color: #036;
+}
+.section { background:#dff1fc; border-radius:12px; padding:15px; margin-bottom:15px; box-shadow:0 4px 10px rgba(0,0,0,0.1); }
+.section-header { display:flex; justify-content:space-between; align-items:center; cursor:pointer; }
+.section-title { font-weight:bold; font-size:18px; color:#036; }
+.section-person { font-style:italic; color:#036; }
+.summary { background:#e0f7ff; border-radius:8px; padding:6px 10px; margin-top:10px; display:flex; gap:10px; font-size:14px; }
+.tasks { margin-top:10px; display:none; }
+.task { background:#ffffff; border-radius:8px; padding:8px; margin-bottom:8px; box-shadow:0 2px 6px rgba(0,0,0,0.08); }
+.task-header { display:flex; justify-content:space-between; align-items:center; cursor:pointer; }
+.task-text { font-weight:bold; }
+.task-days { display:flex; gap:3px; margin-top:5px; }
+.day-cell { flex:1; text-align:center; padding:6px 0; border-radius:4px; font-size:12px; color:white; cursor:pointer; user-select:none; transition:all 0.2s; }
+.day-waiting { background:#ffeaa7; color:#333; }
+.day-done { background:#55efc4; color:#155724; }
+.day-bad { background:#ff7675; color:#721c24; }
+.comments { margin-top:5px; background:#f0faff; padding:5px 8px; border-radius:6px; font-size:13px; }
+.comment-item { display:flex; justify-content:space-between; align-items:center; margin-bottom:2px; }
+input[type=text], textarea { padding:4px 6px; border-radius:6px; border:1px solid #ccc; font-size:14px; width:200px; }
+button { padding:4px 8px; border-radius:6px; border:none; cursor:pointer; background:#036; color:white; font-size:13px; }
+button:hover { background:#025; }
+.controls { display:flex; gap:10px; flex-wrap:wrap; margin-bottom:15px; }
+</style>
+</head>
+<body>
+<div class="container">
+<h1>Úklidový týdenní kalendář</h1>
+
+<div class="controls">
+<input type="text" id="sectionName" placeholder="Název úseku">
+<input type="text" id="sectionPerson" placeholder="Osoba">
+<button onclick="addSection()">Přidat úsek</button>
+<button onclick="resetAll()">Reset vše</button>
+<button onclick="exportPDF()">Export PDF</button>
+</div>
+
+<div id="weekHeader" class="week-header"></div>
+<div id="calendarContainer"></div>
+</div>
+
+<script>
+const days=["Po","Út","St","Čt","Pá","So","Ne"];
+let sections = JSON.parse(localStorage.getItem("sections")) || [];
+
+// ✅ Nová funkce na výpočet přehledu daného dne
+function countDayProgress(dayIndex) {
+  let done = 0, waiting = 0, bad = 0;
+  sections.forEach(sec => {
+    sec.tasks.forEach(t => {
+      const state = t.days?.[dayIndex];
+      if (state === "day-done") done++;
+      else if (state === "day-bad") bad++;
+      else waiting++;
+    });
+  });
+  return { done, bad, waiting };
+}
+
+// ✅ Upravená funkce renderWeekHeader
+function renderWeekHeader() {
+  const header = document.getElementById("weekHeader");
+  header.innerHTML = "";
+  const today = new Date();
+  const dayOfWeek = today.getDay() || 7;
+  const monday = new Date(today);
+  monday.setDate(today.getDate() - dayOfWeek + 1);
+
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(monday);
+    d.setDate(monday.getDate() + i);
+
+    const box = document.createElement("div");
+    box.className = "week-day-box";
+
+    const dayDiv = document.createElement("div");
+    dayDiv.className = "week-day";
+    dayDiv.innerText = `${days[i]} ${d.getDate()}.${d.getMonth() + 1}`;
+    box.appendChild(dayDiv);
+
+    const stats = countDayProgress(i);
+    const summaryDiv = document.createElement("div");
+    summaryDiv.className = "week-day-summary";
+    summaryDiv.innerText = `✅${stats.done} ⚠️${stats.bad} ⏳${stats.waiting}`;
+    box.appendChild(summaryDiv);
+
+    header.appendChild(box);
+  }
+}
+
+function save(){ localStorage.setItem("sections", JSON.stringify(sections)); }
+
+function render(){
+  renderWeekHeader();
+  const container = document.getElementById("calendarContainer");
+  container.innerHTML = "";
+  sections.forEach((sec, sIdx)=>{
+    const secDiv = document.createElement("div");
+    secDiv.className="section";
+
+    const header = document.createElement("div");
+    header.className="section-header";
+    header.innerHTML=`<div class="section-title">${sec.name}</div><div class="section-person">${sec.person}</div>`;
+    header.addEventListener("click", ()=>{
+      const tasksDiv = secDiv.querySelector(".tasks");
+      if(tasksDiv) tasksDiv.style.display = tasksDiv.style.display==="none"?"block":"none";
+    });
+    secDiv.appendChild(header);
+
+    const summaryDiv = document.createElement("div");
+    summaryDiv.className="summary";
+    updateSectionSummary(sec, summaryDiv);
+    secDiv.appendChild(summaryDiv);
+
+    const tasksDiv = document.createElement("div");
+    tasksDiv.className="tasks";
+    if(sec.tasksVisible) tasksDiv.style.display="block";
+
+    sec.tasks.forEach((task, tIdx)=>{
+      const taskDiv = document.createElement("div");
+      taskDiv.className="task";
+
+      const taskHeader = document.createElement("div");
+      taskHeader.className="task-header";
+      taskHeader.innerHTML=`<div class="task-text">${task.text}</div> <button onclick=\"deleteTask(${sIdx},${tIdx})\">🗑️</button>`;
+
+      const daysRow = document.createElement("div");
+      daysRow.className="task-days";
+      if(!task.days) task.days = Array(7).fill("day-waiting");
+      for(let i=0;i<7;i++){
+        const cell = document.createElement("div");
+        cell.className="day-cell "+task.days[i];
+        const today = new Date();
+        const dayOfWeek = today.getDay() || 7;
+        const monday = new Date(today); monday.setDate(today.getDate() - dayOfWeek +1);
+        const d = new Date(monday); d.setDate(monday.getDate()+i);
+        cell.title = `${days[i]} ${d.getDate()}.${d.getMonth()+1}`;
+        cell.addEventListener("click", ()=>{
+          if(task.days[i]==="day-waiting") task.days[i]="day-done";
+          else if(task.days[i]==="day-done") task.days[i]="day-bad";
+          else task.days[i]="day-waiting";
+          render();
+          save();
+        });
+        daysRow.appendChild(cell);
+      }
+
+      const commentDiv = document.createElement("div");
+      commentDiv.className="comments";
+      commentDiv.style.display="block";
+      commentDiv.innerHTML = "";
+      if(task.comments?.length>0){
+        task.comments.forEach((c, idx)=>{
+          const cItem = document.createElement("div");
+          cItem.className="comment-item";
+          cItem.innerHTML = `• ${c} <span style=\"cursor:pointer;color:red;\" onclick=\"deleteTaskComment(${sIdx},${tIdx},${idx})\">❌</span>`;
+          commentDiv.appendChild(cItem);
+        });
+      } else { commentDiv.innerText = "Žádné komentáře"; }
+
+      const commentInput = document.createElement("input");
+      commentInput.type="text";
+      commentInput.placeholder="Přidat komentář";
+      const commentBtn = document.createElement("button");
+      commentBtn.innerText="➕";
+      commentBtn.addEventListener("click", ()=>{
+        if(!task.comments) task.comments=[];
+        if(commentInput.value.trim()!==""){
+          task.comments.push(commentInput.value.trim());
+          commentInput.value="";
+          sec.tasksVisible=true;
+          render();
+          save();
+        }
+      });
+
+      taskDiv.appendChild(taskHeader);
+      taskDiv.appendChild(daysRow);
+      taskDiv.appendChild(commentDiv);
+      taskDiv.appendChild(commentInput);
+      taskDiv.appendChild(commentBtn);
+
+      tasksDiv.appendChild(taskDiv);
+    });
+
+    const newTaskDiv = document.createElement("div");
+    newTaskDiv.style.marginTop="8px";
+    const newTaskInput = document.createElement("input");
+    newTaskInput.type="text";
+    newTaskInput.placeholder="Nový úkol";
+    const newTaskBtn = document.createElement("button");
+    newTaskBtn.innerText="➕ Přidat úkol";
+    newTaskBtn.addEventListener("click", ()=>{
+      if(newTaskInput.value.trim()!==""){
+        sec.tasks.push({text:newTaskInput.value.trim(), days:Array(7).fill("day-waiting"), comments:[]});
+        newTaskInput.value="";
+        sec.tasksVisible=true;
+        render();
+        save();
+      }
+    });
+    newTaskDiv.appendChild(newTaskInput);
+    newTaskDiv.appendChild(newTaskBtn);
+    tasksDiv.appendChild(newTaskDiv);
+
+    secDiv.appendChild(tasksDiv);
+
+    container.appendChild(secDiv);
+  });
+}
+
+function updateSectionSummary(sec, summaryDiv){
+  let done=0, waiting=0, bad=0, comments=0;
+  sec.tasks.forEach(t=>{
+    t.days?.forEach(s=>{ if(s==="day-done") done++; else if(s==="day-bad") bad++; else waiting++; });
+    if(t.comments?.length>0) comments+= t.comments.length;
+  });
+  if(sec.comments?.length>0) comments+= sec.comments.length;
+  summaryDiv.innerText = `Uklizeno: ${done} | Stížnosti: ${comments} | Čekající: ${waiting} | Špatně: ${bad}`;
+}
+
+function deleteTaskComment(sIdx,tIdx,cIdx){ sections[sIdx].tasks[tIdx].comments.splice(cIdx,1); render(); save(); }
+function deleteTask(sIdx,tIdx){ if(confirm('Opravdu smazat úkol?')) { sections[sIdx].tasks.splice(tIdx,1); render(); save(); } }
+function addSection(){ const name=document.getElementById("sectionName").value.trim(); const person=document.getElementById("sectionPerson").value.trim(); if(!name||!person){ alert("Vyplň úsek a osobu!"); return; } sections.push({name, person, tasks:[], comments:[], tasksVisible:true}); document.getElementById("sectionName").value=""; document.getElementById("sectionPerson").value=""; render(); save(); }
+function resetAll(){ if(confirm("Opravdu smazat vše?")){ sections=[]; render(); save(); } }
+function exportPDF(){ html2canvas(document.getElementById("calendarContainer")).then(canvas=>{ const imgData=canvas.toDataURL("image/png"); const pdf=new jspdf.jsPDF("p","pt","a4"); const imgProps=pdf.getImageProperties(imgData); const pdfWidth=pdf.internal.pageSize.getWidth(); const pdfHeight=(imgProps.height*pdfWidth)/imgProps.width; pdf.addImage(imgData,'PNG',0,0,pdfWidth,pdfHeight); pdf.save("uklidovy_kalendar.pdf"); }); }
+
+render();
+</script>
+</body>
+</html>
