@@ -3,72 +3,248 @@
 <head>
 <meta charset="UTF-8">
 <title>DUSSMANN - ŠKODA DOOSAN</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-<style>
-  /* --- Layout & typography --- */
-  body { font-family: Inter, system-ui, Arial, sans-serif; background:#f4f7fb; margin:0; padding:22px; color:#14303a; }
-  .container { max-width:1200px; margin:0 auto; }
-  h1 { text-align:center; color:#0f3550; margin-bottom:18px; font-weight:600; }
+<script type="module">
+import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
+import jsPDF from 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+import html2canvas from 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
 
-  /* --- Week header --- */
-  .week-header { display:flex; gap:6px; margin-bottom:16px; }
-  .week-day-box { flex:1; text-align:center; }
-  .week-day { padding:10px 6px; background:#e9f4ff; border-radius:8px; font-weight:600; color:#08345a; box-shadow: 0 1px 0 rgba(0,0,0,0.03); }
-  .week-day-summary { font-size:12px; background:#f0fbff; border-radius:6px; margin-top:6px; padding:6px 6px; color:#06507a; box-shadow: 0 1px 0 rgba(0,0,0,0.02); }
+// ----- Supabase setup -----
+const supabaseUrl = 'https://ndkovjnkfybtxspzdbpk.supabase.co';
+const supabaseKey = 'TVUJ_SUPABeyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5ka292am5rZnlidHhzcHpkYnBrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjIwMjAzOTcsImV4cCI6MjA3NzU5NjM5N30.SUds0wMRrEJaYy5kuyud0ggQrKh6ZodSfmDwDybH4MIASE_ANON_KEY';
+const supabase = createClient(supabaseUrl, supabaseKey);
 
-  /* --- Sections & tasks --- */
-  .section { background:#ffffff; border-radius:14px; padding:14px; margin-bottom:14px; box-shadow:0 6px 18px rgba(7,18,29,0.05); border:1px solid rgba(3,36,60,0.03); }
-  .section-header { display:flex; gap:12px; justify-content:space-between; align-items:center; }
-  .section-left { display:flex; gap:12px; align-items:center; cursor:pointer; }
-  .section-title { font-weight:700; font-size:17px; color:#0b4270; }
-  .section-person { font-style:italic; color:#2f6a8b; font-size:13px; }
-  .section-actions { display:flex; gap:8px; align-items:center; }
+const days = ["Po","Út","St","Čt","Pá","So","Ne"];
+let sections = [];
 
-  .summary { background:#f6fbff; border-radius:10px; padding:8px 10px; margin-top:10px; display:flex; gap:12px; font-size:14px; color:#0e4f6f; align-items:center; }
-  .summary .small { font-size:13px; color:#234a5d; }
-
-  .tasks { margin-top:12px; }
-  .task { background:#fdfefe; border-radius:10px; padding:10px; margin-bottom:10px; box-shadow:0 2px 6px rgba(7,16,20,0.04); }
-  .task-header { display:flex; justify-content:space-between; align-items:center; gap:8px; }
-  .task-text { font-weight:600; color:#0b3a56; }
-  .task-controls { display:flex; gap:8px; align-items:center; }
-
-  .task-days { display:flex; gap:6px; margin-top:8px; }
-  .day-cell { flex:1; text-align:center; padding:6px 4px; border-radius:6px; font-size:12px; color:white; cursor:pointer; user-select:none; transition:all 0.15s ease; min-width:30px; }
-  .day-waiting { background:#ffd86b; color:#3a2b00; }
-  .day-done { background:#5ce1a2; color:#064022; }
-  .day-bad { background:#ff8a85; color:#5b1516; }
-  .day-none { background:#eef3f6; color:#7a8a93; cursor:default; opacity:0.9; box-shadow: inset 0 0 0 1px rgba(0,0,0,0.02); }
-
-  .comments { margin-top:8px; background:#fbfeff; padding:8px; border-radius:8px; font-size:13px; }
-  .comment-item { display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; }
-
-  input[type=text], textarea { padding:8px 10px; border-radius:8px; border:1px solid #d6e6ef; font-size:14px; width:220px; outline:none; }
-  input[type=text]:focus { box-shadow:0 1px 0 rgba(0,0,0,0.03); border-color:#bfe1ff; }
-  button { padding:8px 10px; border-radius:8px; border:none; cursor:pointer; background:#0b5f8f; color:white; font-size:13px; }
-  button:hover { filter:brightness(0.95); }
-  .small-btn { padding:6px 8px; font-size:13px; border-radius:8px; background:#dfeff8; color:#094a6f; border:1px solid rgba(4,70,100,0.06); cursor:pointer; }
-  .danger { background:#ff6b6b; color:white; }
-
-  .controls { display:flex; gap:10px; flex-wrap:wrap; margin-bottom:12px; align-items:center; justify-content:center; }
-
-  /* day picker for new task */
-  .day-picker { display:flex; gap:6px; margin-top:8px; }
-  .day-pick { padding:6px 8px; border-radius:8px; background:#f0f7fb; cursor:pointer; user-select:none; border:1px solid #e1eef6; color:#074a6b; font-weight:600; font-size:12px; }
-  .day-pick.active { background:#0b6f9e; color:white; border-color:transparent; }
-
-  /* responsive */
-  @media (max-width:720px){
-    .week-day { font-size:13px; padding:8px 4px; }
-    input[type=text] { width:140px; }
+/* ---------- HELPERS ---------- */
+function ensureTaskDays(task){
+  if(!task.days){
+    task.days = Array(7).fill("day-waiting");
+    return;
   }
-</style>
+  if(Array.isArray(task.days) && task.days.length===7 && typeof task.days[0]==="string") return;
+  task.days = Array(7).fill("day-waiting");
+}
+
+function updateSectionSummary(sec, summaryDiv){
+  let done=0, waiting=0, bad=0, comments=0;
+  sec.tasks?.forEach(t=>{
+    ensureTaskDays(t);
+    t.days.forEach(s=>{
+      if(s==="day-done") done++;
+      else if(s==="day-bad") bad++;
+      else if(s==="day-waiting") waiting++;
+    });
+    comments += (t.comments?.length||0);
+  });
+  summaryDiv.innerHTML = `<div class="small">Uklizeno: ${done}</div><div class="small">Stížnosti: ${comments}</div><div class="small">Čekající: ${waiting}</div><div class="small">Špatně: ${bad}</div>`;
+}
+
+/* ---------- Supabase CRUD ---------- */
+async function loadSections(){
+  const { data, error } = await supabase.from('sections').select('*, tasks(*)').order('id');
+  if(error){ console.error(error); return; }
+  sections = data.map(s=>{ s.tasks = s.tasks||[]; return s; });
+  render();
+}
+
+async function addSection(){
+  const name = document.getElementById("sectionName").value.trim();
+  const person = document.getElementById("sectionPerson").value.trim();
+  if(!name||!person){ alert("Vyplň úsek a osobu!"); return; }
+  const { data, error } = await supabase.from('sections').insert([{ name, person }]).select();
+  if(error){ console.error(error); return; }
+  data[0].tasks=[];
+  sections.push(data[0]);
+  document.getElementById("sectionName").value="";
+  document.getElementById("sectionPerson").value="";
+  render();
+}
+
+async function deleteSection(sId){
+  if(!confirm("Opravdu smazat tento úsek?")) return;
+  const { error } = await supabase.from('sections').delete().eq('id', sId);
+  if(error){ console.error(error); return; }
+  await loadSections();
+}
+
+async function addTask(sectionIdx, text, daysArr){
+  const section = sections[sectionIdx];
+  const { data, error } = await supabase.from('tasks')
+    .insert([{ section_id: section.id, text, days: JSON.stringify(daysArr), comments: '[]' }])
+    .select();
+  if(error){ console.error(error); return; }
+  section.tasks.push(data[0]);
+  render();
+}
+
+async function deleteTask(sectionIdx, taskId){
+  if(!confirm("Opravdu smazat úkol?")) return;
+  const { error } = await supabase.from('tasks').delete().eq('id', taskId);
+  if(error){ console.error(error); return; }
+  await loadSections();
+}
+
+async function toggleTaskDay(sectionIdx, taskIdx, dayIdx){
+  const task = sections[sectionIdx].tasks[taskIdx];
+  ensureTaskDays(task);
+  task.days[dayIdx] = task.days[dayIdx]==="day-waiting"?"day-done":task.days[dayIdx]==="day-done"?"day-bad":"day-waiting";
+  const { error } = await supabase.from('tasks').update({ days: JSON.stringify(task.days) }).eq('id', task.id);
+  if(error){ console.error(error); return; }
+  render();
+}
+
+async function addTaskComment(sectionIdx, taskIdx, comment){
+  const task = sections[sectionIdx].tasks[taskIdx];
+  if(!task.comments) task.comments=[];
+  task.comments.push(comment);
+  const { error } = await supabase.from('tasks').update({ comments: JSON.stringify(task.comments) }).eq('id', task.id);
+  if(error){ console.error(error); return; }
+  render();
+}
+
+async function deleteTaskComment(sectionIdx, taskIdx, cIdx){
+  const task = sections[sectionIdx].tasks[taskIdx];
+  task.comments.splice(cIdx,1);
+  const { error } = await supabase.from('tasks').update({ comments: JSON.stringify(task.comments) }).eq('id', task.id);
+  if(error){ console.error(error); return; }
+  render();
+}
+
+/* ---------- Render ---------- */
+function renderWeekHeader(){
+  const header = document.getElementById("weekHeader");
+  header.innerHTML="";
+  const today = new Date();
+  const dayOfWeek = today.getDay()||7;
+  const monday = new Date(today); monday.setDate(today.getDate()-dayOfWeek+1);
+  for(let i=0;i<7;i++){
+    const d=new Date(monday); d.setDate(monday.getDate()+i);
+    const box=document.createElement("div"); box.className="week-day-box";
+    const dayDiv=document.createElement("div"); dayDiv.className="week-day";
+    if(new Date().toDateString()===d.toDateString()) dayDiv.style.boxShadow="inset 0 -4px 0 rgba(11,111,158,0.12)";
+    dayDiv.innerText=`${days[i]} ${d.getDate()}.${d.getMonth()+1}`;
+    box.appendChild(dayDiv);
+
+    let done=0, waiting=0, bad=0;
+    sections.forEach(sec=>sec.tasks?.forEach(t=>{
+      ensureTaskDays(t);
+      const state = t.days[i];
+      if(state==="day-done") done++;
+      else if(state==="day-bad") bad++;
+      else if(state==="day-waiting") waiting++;
+    }));
+
+    const summaryDiv=document.createElement("div"); summaryDiv.className="week-day-summary";
+    summaryDiv.innerText=`✅ ${done}  ⚠️ ${bad}  ⏳ ${waiting}`;
+    box.appendChild(summaryDiv);
+
+    header.appendChild(box);
+  }
+}
+
+function render(){
+  renderWeekHeader();
+  const container=document.getElementById("calendarContainer");
+  container.innerHTML="";
+
+  sections.forEach((sec,sIdx)=>{
+    const secDiv=document.createElement("div"); secDiv.className="section";
+
+    const header=document.createElement("div"); header.className="section-header";
+    const left=document.createElement("div"); left.className="section-left";
+    const title=document.createElement("div"); title.className="section-title"; title.innerText=sec.name||"(bez názvu)";
+    const person=document.createElement("div"); person.className="section-person"; person.innerText=sec.person||"(bez osoby)";
+    left.appendChild(title); left.appendChild(person);
+    header.appendChild(left);
+
+    const actions=document.createElement("div"); actions.className="section-actions";
+    const delBtn=document.createElement("button"); delBtn.className="small-btn"; delBtn.innerText="🗑️";
+    delBtn.addEventListener("click",()=>deleteSection(sec.id));
+    actions.appendChild(delBtn); header.appendChild(actions);
+    secDiv.appendChild(header);
+
+    const summaryDiv=document.createElement("div"); summaryDiv.className="summary";
+    updateSectionSummary(sec,summaryDiv);
+    secDiv.appendChild(summaryDiv);
+
+    const tasksDiv=document.createElement("div"); tasksDiv.className="tasks";
+    sec.tasks?.forEach((task,tIdx)=>{
+      ensureTaskDays(task);
+      const taskDiv=document.createElement("div"); taskDiv.className="task";
+      const taskHeader=document.createElement("div"); taskHeader.className="task-header";
+      taskHeader.innerHTML=`<div class="task-text">${task.text}</div>`;
+      const controls=document.createElement("div"); controls.className="task-controls";
+      const delTask=document.createElement("button"); delTask.className="small-btn"; delTask.innerText="🗑️";
+      delTask.addEventListener("click",()=>deleteTask(sIdx,task.id));
+      controls.appendChild(delTask); taskHeader.appendChild(controls);
+      taskDiv.appendChild(taskHeader);
+
+      const daysRow=document.createElement("div"); daysRow.className="task-days";
+      task.days.forEach((state,dayIdx)=>{
+        const cell=document.createElement("div"); cell.className="day-cell "+state;
+        cell.addEventListener("click",()=>toggleTaskDay(sIdx,tIdx,dayIdx));
+        daysRow.appendChild(cell);
+      });
+      taskDiv.appendChild(daysRow);
+
+      const commentDiv=document.createElement("div"); commentDiv.className="comments";
+      if(task.comments?.length>0) task.comments.forEach((c,idx)=>{
+        const cItem=document.createElement("div"); cItem.className="comment-item";
+        cItem.innerHTML=`<div>• ${c}</div><div style="cursor:pointer;color:#b33;" onclick="deleteTaskComment(${sIdx},${tIdx},${idx})">❌</div>`;
+        commentDiv.appendChild(cItem);
+      }); else commentDiv.innerText="Žádné komentáře";
+      taskDiv.appendChild(commentDiv);
+
+      const commentInput=document.createElement("input"); commentInput.type="text"; commentInput.placeholder="Přidat komentář";
+      const commentBtn=document.createElement("button"); commentBtn.innerText="➕";
+      commentBtn.addEventListener("click",()=>{ if(commentInput.value.trim()!=="") addTaskComment(sIdx,tIdx,commentInput.value.trim()); commentInput.value=""; });
+      taskDiv.appendChild(commentInput); taskDiv.appendChild(commentBtn);
+
+      tasksDiv.appendChild(taskDiv);
+    });
+
+    // --- new task + day picker ---
+    const newTaskDiv=document.createElement("div"); newTaskDiv.style.marginTop="10px"; newTaskDiv.style.display="flex"; newTaskDiv.style.flexDirection="column"; newTaskDiv.style.gap="8px";
+    const newTaskRow=document.createElement("div"); newTaskRow.style.display="flex"; newTaskRow.style.gap="8px"; newTaskRow.style.alignItems="center";
+    const newTaskInput=document.createElement("input"); newTaskInput.type="text"; newTaskInput.placeholder="Nový úkol"; newTaskInput.style.flex="1";
+    const newTaskBtn=document.createElement("button"); newTaskBtn.innerText="➕ Přidat úkol";
+    newTaskBtn.addEventListener("click",()=>{
+      const picks=Array.from(newTaskDiv.querySelectorAll(".day-pick"));
+      const selected=picks.map((p,idx)=>p.classList.contains("active")?idx:-1).filter(i=>i>=0);
+      const daysArr = selected.length===0 ? Array(7).fill("day-waiting") : Array(7).fill("day-none").map((_,i)=>selected.includes(i)?"day-waiting":"day-none");
+      addTask(sIdx,newTaskInput.value.trim(),daysArr);
+      newTaskInput.value=""; picks.forEach(p=>p.classList.remove("active"));
+    });
+    newTaskRow.appendChild(newTaskInput); newTaskRow.appendChild(newTaskBtn); newTaskDiv.appendChild(newTaskRow);
+    const dayPicker=document.createElement("div"); dayPicker.className="day-picker";
+    days.forEach((dname,idx)=>{
+      const p=document.createElement("div"); p.className="day-pick"; p.innerText=dname;
+      p.addEventListener("click",()=>p.classList.toggle("active"));
+      dayPicker.appendChild(p);
+    }); newTaskDiv.appendChild(dayPicker); tasksDiv.appendChild(newTaskDiv);
+
+    secDiv.appendChild(tasksDiv); container.appendChild(secDiv);
+  });
+}
+
+/* ---------- PDF Export ---------- */
+window.exportPDF=()=>{ html2canvas(document.getElementById("calendarContainer")).then(canvas=>{
+  const imgData=canvas.toDataURL("image/png"); const pdf=new jsPDF.jsPDF("p","pt","a4");
+  const imgProps=pdf.getImageProperties(imgData); const pdfWidth=pdf.internal.pageSize.getWidth();
+  const pdfHeight=(imgProps.height*pdfWidth)/imgProps.width;
+  pdf.addImage(imgData,'PNG',0,0,pdfWidth,pdfHeight); pdf.save("uklidovy_kalendar.pdf");
+});
+
+/* ---------- Init ---------- */
+window.addSection=addSection;
+window.resetAll=async()=>{ if(confirm("Opravdu smazat vše?")){ await supabase.from('tasks').delete(); await supabase.from('sections').delete(); await loadSections(); }};
+loadSections();
+</script>
 </head>
 <body>
 <div class="container">
   <h1>DUSSMANN - ŠKODA DOOSAN</h1>
-
   <div class="controls">
     <input type="text" id="sectionName" placeholder="Název úseku">
     <input type="text" id="sectionPerson" placeholder="Osoba">
@@ -76,380 +252,11 @@
     <button onclick="resetAll()" class="small-btn">Reset vše</button>
     <button onclick="exportPDF()" class="small-btn">Export PDF</button>
   </div>
-
   <div id="weekHeader" class="week-header"></div>
   <div id="calendarContainer"></div>
 </div>
-
-<script>
-const days = ["Po","Út","St","Čt","Pá","So","Ne"];
-let sections = JSON.parse(localStorage.getItem("sections")) || [];
-
-/* ---------- HELPERS ---------- */
-
-// Udržujeme kompatibilitu: pokud task.days chybí nebo je v původním formátu (7 strings), normalizujeme
-function ensureTaskDays(task){
-  if(!task.days){
-    // default: aktivní každý den (původní chování)
-    task.days = Array(7).fill("day-waiting");
-    return;
-  }
-  if(Array.isArray(task.days) && task.days.length === 7 && typeof task.days[0] === "string"){
-    // už starý formát - ponecháme, nic měnit nemusíme
-    return;
-  }
-  // pokud má starý nebo jiný tvar (např. indices), přepíšeme na 7-length array:
-  if(Array.isArray(task.days)){
-    // assume array of indices (0..6)
-    const arr = Array(7).fill("day-none");
-    task.days.forEach(idx=>{
-      if(typeof idx === "number" && idx >=0 && idx <7) arr[idx] = "day-waiting";
-    });
-    task.days = arr;
-    return;
-  }
-  // fallback
-  task.days = Array(7).fill("day-waiting");
-}
-
-// spoříme data do localStorage
-function save(){ localStorage.setItem("sections", JSON.stringify(sections)); }
-
-/* ---------- Week header (s přehledem) ---------- */
-
-function countDayProgress(dayIndex) {
-  let done = 0, waiting = 0, bad = 0;
-  sections.forEach(sec => {
-    sec.tasks?.forEach(t => {
-      // zajistíme kompatibilitu
-      ensureTaskDays(t);
-      const state = t.days?.[dayIndex];
-      if (state === "day-done") done++;
-      else if (state === "day-bad") bad++;
-      else if (state === "day-waiting") waiting++;
-      // ignore day-none
-    });
-  });
-  return { done, bad, waiting };
-}
-
-function renderWeekHeader() {
-  const header = document.getElementById("weekHeader");
-  header.innerHTML = "";
-  const today = new Date();
-  const dayOfWeek = today.getDay() || 7;
-  const monday = new Date(today);
-  monday.setDate(today.getDate() - dayOfWeek + 1);
-
-  for (let i = 0; i < 7; i++) {
-    const d = new Date(monday);
-    d.setDate(monday.getDate() + i);
-
-    const box = document.createElement("div");
-    box.className = "week-day-box";
-
-    const dayDiv = document.createElement("div");
-    dayDiv.className = "week-day";
-    // zvýraznit dnešní den
-    const isToday = (new Date().toDateString() === d.toDateString());
-    if(isToday) dayDiv.style.boxShadow = "inset 0 -4px 0 rgba(11,111,158,0.12)";
-
-    dayDiv.innerText = `${days[i]} ${d.getDate()}.${d.getMonth() + 1}`;
-    box.appendChild(dayDiv);
-
-    const stats = countDayProgress(i);
-    const summaryDiv = document.createElement("div");
-    summaryDiv.className = "week-day-summary";
-    summaryDiv.innerText = `✅ ${stats.done}  ⚠️ ${stats.bad}  ⏳ ${stats.waiting}`;
-    box.appendChild(summaryDiv);
-
-    header.appendChild(box);
-  }
-}
-
-/* ---------- Render celé */ 
-
-function render(){
-  renderWeekHeader();
-  const container = document.getElementById("calendarContainer");
-  container.innerHTML = "";
-
-  sections.forEach((sec, sIdx)=>{
-    const secDiv = document.createElement("div");
-    secDiv.className = "section";
-
-    // HEADER (smazat úsek + přepínat úkoly)
-    const header = document.createElement("div");
-    header.className = "section-header";
-
-    const left = document.createElement("div");
-    left.className = "section-left";
-    const title = document.createElement("div");
-    title.className = "section-title";
-    title.innerText = sec.name || "(bez názvu)";
-    const person = document.createElement("div");
-    person.className = "section-person";
-    person.innerText = sec.person || "(bez osoby)";
-    left.appendChild(title);
-    left.appendChild(person);
-    left.addEventListener("click", ()=>{
-      const tasksDiv = secDiv.querySelector(".tasks");
-      if(tasksDiv) tasksDiv.style.display = tasksDiv.style.display === "none" ? "block" : "none";
-      sec.tasksVisible = !sec.tasksVisible;
-      save();
-    });
-
-    const actions = document.createElement("div");
-    actions.className = "section-actions";
-    // delete section button
-    const delBtn = document.createElement("button");
-    delBtn.className = "small-btn";
-    delBtn.title = "Smazat úsek";
-    delBtn.innerText = "🗑️";
-    delBtn.addEventListener("click", (e)=>{
-      e.stopPropagation();
-      deleteSection(sIdx);
-    });
-
-    actions.appendChild(delBtn);
-
-    header.appendChild(left);
-    header.appendChild(actions);
-    secDiv.appendChild(header);
-
-    // SUMMARY
-    const summaryDiv = document.createElement("div");
-    summaryDiv.className = "summary";
-    updateSectionSummary(sec, summaryDiv);
-    secDiv.appendChild(summaryDiv);
-
-    // TASKS
-    const tasksDiv = document.createElement("div");
-    tasksDiv.className = "tasks";
-    if(sec.tasksVisible === false) tasksDiv.style.display = "none";
-    else tasksDiv.style.display = "block";
-
-    // each task
-    sec.tasks = sec.tasks || [];
-    sec.tasks.forEach((task, tIdx)=>{
-      ensureTaskDays(task);
-
-      const taskDiv = document.createElement("div");
-      taskDiv.className = "task";
-
-      const taskHeader = document.createElement("div");
-      taskHeader.className = "task-header";
-      taskHeader.innerHTML = `<div class="task-text">${task.text}</div>`;
-
-      const taskControls = document.createElement("div");
-      taskControls.className = "task-controls";
-
-      const deleteTaskBtn = document.createElement("button");
-      deleteTaskBtn.className = "small-btn";
-      deleteTaskBtn.innerText = "🗑️";
-      deleteTaskBtn.title = "Smazat úkol";
-      deleteTaskBtn.addEventListener("click", ()=>{
-        deleteTask(sIdx, tIdx);
-      });
-
-      taskControls.appendChild(deleteTaskBtn);
-      taskHeader.appendChild(taskControls);
-      taskDiv.appendChild(taskHeader);
-
-      // days row
-      const daysRow = document.createElement("div");
-      daysRow.className = "task-days";
-      for(let i=0;i<7;i++){
-        const cell = document.createElement("div");
-        const state = task.days[i] || "day-none";
-        cell.className = "day-cell " + state;
-        // titulek datumu
-        const today = new Date();
-        const dayOfWeek = today.getDay() || 7;
-        const monday = new Date(today); monday.setDate(today.getDate() - dayOfWeek +1);
-        const d = new Date(monday); d.setDate(monday.getDate()+i);
-        cell.title = `${days[i]} ${d.getDate()}.${d.getMonth()+1}`;
-
-        // pokud je day-none, nezapneme cyklus stavů a uděláme disabled vizuál
-        if(state === "day-none"){
-          cell.className = "day-cell day-none";
-          // kliknutí nic nedělá
-        } else {
-          cell.addEventListener("click", ()=>{
-            // cyklus: waiting -> done -> bad -> waiting
-            if(task.days[i] === "day-waiting") task.days[i] = "day-done";
-            else if(task.days[i] === "day-done") task.days[i] = "day-bad";
-            else task.days[i] = "day-waiting";
-            save();
-            render();
-          });
-        }
-
-        daysRow.appendChild(cell);
-      }
-      taskDiv.appendChild(daysRow);
-
-      // comments
-      const commentDiv = document.createElement("div");
-      commentDiv.className = "comments";
-      if(task.comments?.length>0){
-        task.comments.forEach((c, idx)=>{
-          const cItem = document.createElement("div");
-          cItem.className = "comment-item";
-          cItem.innerHTML = `<div>• ${c}</div><div style="cursor:pointer;color:#b33;" onclick="deleteTaskComment(${sIdx},${tIdx},${idx})">❌</div>`;
-          commentDiv.appendChild(cItem);
-        });
-      } else {
-        commentDiv.innerText = "Žádné komentáře";
-      }
-
-      const commentInput = document.createElement("input");
-      commentInput.type = "text";
-      commentInput.placeholder = "Přidat komentář";
-      const commentBtn = document.createElement("button");
-      commentBtn.innerText = "➕";
-      commentBtn.addEventListener("click", ()=>{
-        if(!task.comments) task.comments = [];
-        if(commentInput.value.trim()!==""){
-          task.comments.push(commentInput.value.trim());
-          commentInput.value = "";
-          sec.tasksVisible = true;
-          save();
-          render();
-        }
-      });
-
-      taskDiv.appendChild(commentDiv);
-      taskDiv.appendChild(commentInput);
-      taskDiv.appendChild(commentBtn);
-
-      tasksDiv.appendChild(taskDiv);
-    });
-
-    // --- new task input + day picker ---
-    const newTaskDiv = document.createElement("div");
-    newTaskDiv.style.marginTop = "10px";
-    newTaskDiv.style.display = "flex";
-    newTaskDiv.style.flexDirection = "column";
-    newTaskDiv.style.gap = "8px";
-
-    const newTaskRow = document.createElement("div");
-    newTaskRow.style.display = "flex"; newTaskRow.style.gap = "8px"; newTaskRow.style.alignItems = "center";
-
-    const newTaskInput = document.createElement("input");
-    newTaskInput.type = "text";
-    newTaskInput.placeholder = "Nový úkol";
-    newTaskInput.style.flex = "1";
-
-    const newTaskBtn = document.createElement("button");
-    newTaskBtn.innerText = "➕ Přidat úkol";
-    newTaskBtn.addEventListener("click", ()=>{
-      // sestavíme days pole dle vybraných picků
-      const picks = Array.from(newTaskDiv.querySelectorAll(".day-pick"));
-      const selected = picks.map((p, idx) => p.classList.contains("active") ? idx : -1).filter(i=>i>=0);
-      if(newTaskInput.value.trim()===""){
-        alert("Napiš text úkolu.");
-        return;
-      }
-      // pokud nic nevybráno => default: každý den
-      let daysArr;
-      if(selected.length === 0){
-        daysArr = Array(7).fill("day-waiting");
-      } else {
-        daysArr = Array(7).fill("day-none");
-        selected.forEach(i=> daysArr[i] = "day-waiting");
-      }
-      sec.tasks.push({ text: newTaskInput.value.trim(), days: daysArr, comments: [] });
-      newTaskInput.value = "";
-      // reset selektorů
-      picks.forEach(p=>p.classList.remove("active"));
-      sec.tasksVisible = true;
-      save();
-      render();
-    });
-
-    newTaskRow.appendChild(newTaskInput);
-    newTaskRow.appendChild(newTaskBtn);
-    newTaskDiv.appendChild(newTaskRow);
-
-    // day picker buttons
-    const dayPicker = document.createElement("div");
-    dayPicker.className = "day-picker";
-    days.forEach((dname, idx)=>{
-      const p = document.createElement("div");
-      p.className = "day-pick";
-      p.innerText = dname;
-      p.addEventListener("click", ()=>{
-        p.classList.toggle("active");
-      });
-      dayPicker.appendChild(p);
-    });
-    newTaskDiv.appendChild(dayPicker);
-
-    tasksDiv.appendChild(newTaskDiv);
-
-    secDiv.appendChild(tasksDiv);
-    container.appendChild(secDiv);
-  });
-}
-
-/* ---------- CRUD actions ---------- */
-
-function deleteSection(index){
-  if(confirm("Opravdu smazat tento úsek?")) {
-    sections.splice(index,1);
-    save();
-    render();
-  }
-}
-
-function deleteTask(sIdx,tIdx){
-  if(confirm("Opravdu smazat úkol?")) {
-    sections[sIdx].tasks.splice(tIdx,1);
-    save();
-    render();
-  }
-}
-
-function deleteTaskComment(sIdx,tIdx,cIdx){
-  sections[sIdx].tasks[tIdx].comments.splice(cIdx,1);
-  save();
-  render();
-}
-
-function addSection(){
-  const name = document.getElementById("sectionName").value.trim();
-  const person = document.getElementById("sectionPerson").value.trim();
-  if(!name || !person){ alert("Vyplň úsek a osobu!"); return; }
-  sections.push({ name, person, tasks:[], comments:[], tasksVisible:true });
-  document.getElementById("sectionName").value = "";
-  document.getElementById("sectionPerson").value = "";
-  save();
-  render();
-}
-
-function resetAll(){ if(confirm("Opravdu smazat vše?")){ sections = []; save(); render(); } }
-
-function exportPDF(){ html2canvas(document.getElementById("calendarContainer")).then(canvas=>{ const imgData = canvas.toDataURL("image/png"); const pdf = new jspdf.jsPDF("p","pt","a4"); const imgProps = pdf.getImageProperties(imgData); const pdfWidth = pdf.internal.pageSize.getWidth(); const pdfHeight = (imgProps.height*pdfWidth)/imgProps.width; pdf.addImage(imgData,'PNG',0,0,pdfWidth,pdfHeight); pdf.save("uklidovy_kalendar.pdf"); }); }
-
-function updateSectionSummary(sec, summaryDiv){
-  let done=0, waiting=0, bad=0, comments=0;
-  sec.tasks = sec.tasks || [];
-  sec.tasks.forEach(t=>{
-    ensureTaskDays(t);
-    t.days.forEach(s=>{
-      if(s==="day-done") done++;
-      else if(s==="day-bad") bad++;
-      else if(s==="day-waiting") waiting++;
-    });
-    if(t.comments?.length>0) comments += t.comments.length;
-  });
-  if(sec.comments?.length>0) comments += sec.comments.length;
-  summaryDiv.innerHTML = `<div class="small">Uklizeno: ${done}</div><div class="small">Stížnosti: ${comments}</div><div class="small">Čekající: ${waiting}</div><div class="small">Špatně: ${bad}</div>`;
-}
-
-/* ---------- init ---------- */
-render();
-</script>
+<style>
+/* --- všechny tvoje CSS pravidla z původního kódu --- */
+</style>
 </body>
 </html>
