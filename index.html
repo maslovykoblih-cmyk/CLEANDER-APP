@@ -1,439 +1,156 @@
 <!DOCTYPE html>
 <html lang="cs">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
+<meta charset="UTF-8">
 <title>DUSSMANN - ŠKODA DOOSAN</title>
-
-<!-- knihovny -->
-<script type="module">
-import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
-import jsPDF from 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
-import html2canvas from 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
-
-// ====== NASTAVENÍ - nepřepisuj jméno proměnných ======
-const SUPABASE_URL = 'https://ndkovjnkfybtxspzdbpk.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5ka292am5rZnlidHhzcHpkYnBrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjIwMjAzOTcsImV4cCI6MjA3NzU5NjM5N30.SUds0wMRrEJaYy5kuyud0ggQrKh6ZodSfmDwDybH4MI';
-const ADMIN_EMAIL = 'maslovykoblih@gmail.com'; // admin který má právo zapisovat
-
-const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-// ====== UI a stav ======
-const days = ["Po","Út","St","Čt","Pá","So","Ne"];
-let sections = []; // místní kopie načtená ze Supabase
-let currentUser = null;
-
-// ------ Pomocné funkce pro robustnost dat ------
-function safeParseJSON(val, fallback) {
-  if (Array.isArray(val) || typeof val === 'object') return val;
-  try { return JSON.parse(val); } catch(e){ return fallback; }
-}
-function normalizeTask(task){
-  // některé DB mohou mít pole 'text' nebo 'name'
-  task.text = task.text ?? task.name ?? '';
-  // days/comments mohou být JSON string nebo jsonb -> musí být pole
-  task.days = safeParseJSON(task.days, null);
-  if(!Array.isArray(task.days)) task.days = Array(7).fill("day-waiting");
-  // normalize length
-  if(task.days.length !== 7) {
-    const arr = Array(7).fill("day-none");
-    for(let i=0;i<Math.min(7, task.days.length); i++){
-      const v = task.days[i];
-      if(typeof v === 'string') arr[i] = v;
-      else arr[i] = 'day-waiting';
-    }
-    task.days = arr;
-  }
-  task.comments = safeParseJSON(task.comments, []);
-  if(!Array.isArray(task.comments)) task.comments = [];
-  return task;
-}
-
-// ====== Auth UI a kontrola práv =========
-async function checkSession() {
-  const { data } = await supabase.auth.getSession();
-  currentUser = data?.session?.user ?? null;
-  renderAuthUI();
-}
-async function signIn(email, password){
-  const res = await supabase.auth.signInWithPassword({ email, password });
-  if(res.error) {
-    alert('Chyba přihlášení: ' + res.error.message);
-    return;
-  }
-  currentUser = res.data.user;
-  renderAuthUI();
-  await loadSections();
-}
-async function signOut(){
-  await supabase.auth.signOut();
-  currentUser = null;
-  renderAuthUI();
-  await loadSections();
-}
-function isAdmin() {
-  return currentUser && currentUser.email === ADMIN_EMAIL;
-}
-
-// ====== CRUD na Supabase ======
-async function loadSections(){
-  // načti sections + jejich tasks (pokud je vztah nastaven)
-  const { data, error } = await supabase
-    .from('sections')
-    .select('*, tasks(*)')
-    .order('created_at', { ascending: true });
-  if(error){ console.error('loadSections', error); alert('Chyba při načítání dat (viz console)'); return; }
-  sections = (data || []).map(s=>{
-    s.tasks = (s.tasks || []).map(t => normalizeTask(t));
-    return s;
-  });
-  render();
-}
-
-async function addSectionAPI(name, person){
-  if(!isAdmin()){ alert('Jen admin může přidávat. Přihlas se.'); return; }
-  const { data, error } = await supabase.from('sections').insert([{ name, person }]).select();
-  if(error){ console.error('addSection', error); alert('Chyba při vytváření sekce'); return; }
-  await loadSections();
-}
-
-async function deleteSectionAPI(sectionId){
-  if(!isAdmin()){ alert('Jen admin může mazat.'); return; }
-  if(!confirm('Opravdu smazat tento úsek?')) return;
-  const { error } = await supabase.from('sections').delete().eq('id', sectionId);
-  if(error){ console.error('deleteSection', error); alert('Chyba při mazání'); return; }
-  await loadSections();
-}
-
-async function addTaskAPI(sectionId, text, daysArr){
-  if(!isAdmin()){ alert('Jen admin může přidávat úkoly.'); return; }
-  const payload = {
-    section_id: sectionId,
-    text,
-    days: daysArr,
-    comments: []
-  };
-  const { data, error } = await supabase.from('tasks').insert([payload]).select();
-  if(error){ console.error('addTask', error); alert('Chyba při vytváření úkolu'); return; }
-  await loadSections();
-}
-
-async function deleteTaskAPI(taskId){
-  if(!isAdmin()){ alert('Jen admin může mazat úkoly.'); return; }
-  if(!confirm('Opravdu smazat úkol?')) return;
-  const { error } = await supabase.from('tasks').delete().eq('id', taskId);
-  if(error){ console.error('deleteTask', error); alert('Chyba při mazání úkolu'); return; }
-  await loadSections();
-}
-
-async function toggleTaskDayAPI(sectionIdx, taskIdx, dayIdx){
-  if(!isAdmin()){ alert('Jen admin může měnit stavy.'); return; }
-  const task = sections[sectionIdx].tasks[taskIdx];
-  // cyklus waiting -> done -> bad -> waiting
-  if(task.days[dayIdx] === 'day-waiting') task.days[dayIdx] = 'day-done';
-  else if(task.days[dayIdx] === 'day-done') task.days[dayIdx] = 'day-bad';
-  else task.days[dayIdx] = 'day-waiting';
-
-  const { error } = await supabase.from('tasks').update({ days: task.days }).eq('id', task.id);
-  if(error){ console.error('toggleTaskDay', error); alert('Chyba při aktualizaci stavu'); return; }
-  await loadSections();
-}
-
-async function addTaskCommentAPI(sectionIdx, taskIdx, comment){
-  if(!isAdmin()){ alert('Jen admin může přidávat komentáře.'); return; }
-  const task = sections[sectionIdx].tasks[taskIdx];
-  task.comments.push(comment);
-  const { error } = await supabase.from('tasks').update({ comments: task.comments }).eq('id', task.id);
-  if(error){ console.error('addComment', error); alert('Chyba při přidání komentáře'); return; }
-  await loadSections();
-}
-
-async function deleteTaskCommentAPI(sectionIdx, taskIdx, cIdx){
-  if(!isAdmin()){ alert('Jen admin může mazat komentáře.'); return; }
-  const task = sections[sectionIdx].tasks[taskIdx];
-  task.comments.splice(cIdx,1);
-  const { error } = await supabase.from('tasks').update({ comments: task.comments }).eq('id', task.id);
-  if(error){ console.error('deleteComment', error); alert('Chyba při mazání komentáře'); return; }
-  await loadSections();
-}
-
-// ====== UI render (velmi podobné tvému originálu) ======
-function countDayProgress(dayIndex){
-  let done=0, waiting=0, bad=0;
-  sections.forEach(sec => {
-    (sec.tasks||[]).forEach(t => {
-      const state = t.days?.[dayIndex];
-      if(state==='day-done') done++;
-      else if(state==='day-bad') bad++;
-      else if(state==='day-waiting') waiting++;
-    });
-  });
-  return { done, bad, waiting };
-}
-
-function renderWeekHeader(){
-  const header = document.getElementById('weekHeader');
-  header.innerHTML = '';
-  const today = new Date(); const dayOfWeek = today.getDay()||7;
-  const monday = new Date(today); monday.setDate(today.getDate()-dayOfWeek+1);
-  for(let i=0;i<7;i++){
-    const d = new Date(monday); d.setDate(monday.getDate()+i);
-    const box = document.createElement('div'); box.className='week-day-box';
-    const dayDiv = document.createElement('div'); dayDiv.className='week-day';
-    if(new Date().toDateString()===d.toDateString()) dayDiv.style.boxShadow = "inset 0 -4px 0 rgba(11,111,158,0.12)";
-    dayDiv.innerText = `${days[i]} ${d.getDate()}.${d.getMonth()+1}`;
-    box.appendChild(dayDiv);
-    const stats = countDayProgress(i);
-    const summaryDiv = document.createElement('div'); summaryDiv.className='week-day-summary';
-    summaryDiv.innerText = `✅ ${stats.done}  ⚠️ ${stats.bad}  ⏳ ${stats.waiting}`;
-    box.appendChild(summaryDiv);
-    header.appendChild(box);
-  }
-}
-
-function renderAuthUI(){
-  const authWrap = document.getElementById('authWrap');
-  const status = document.getElementById('authStatus');
-  if(currentUser){
-    status.innerHTML = `Přihlášen: <strong>${currentUser.email}</strong> ${isAdmin()? '(admin)':''}`;
-    authWrap.innerHTML = `<button id="signOutBtn" class="small-btn">Odhlásit</button>`;
-    document.getElementById('signOutBtn').addEventListener('click', signOut);
-  } else {
-    status.innerHTML = `Přihlášení (admin má právo upravovat)`;
-    authWrap.innerHTML = `
-      <input id="authEmail" placeholder="email" value="${ADMIN_EMAIL}" style="width:200px;padding:6px;border-radius:6px;border:1px solid #ccc;margin-right:6px" />
-      <input id="authPass" placeholder="heslo" type="password" style="width:160px;padding:6px;border-radius:6px;border:1px solid #ccc;margin-right:6px" />
-      <button id="signInBtn" class="small-btn">Přihlásit</button>`;
-    document.getElementById('signInBtn').addEventListener('click', ()=>{
-      const e = document.getElementById('authEmail').value.trim();
-      const p = document.getElementById('authPass').value;
-      signIn(e,p);
-    });
-  }
-}
-
-function render(){
-  renderWeekHeader();
-  renderAuthUI();
-  const container = document.getElementById('calendarContainer');
-  container.innerHTML = '';
-
-  sections.forEach((sec, sIdx)=>{
-    const secDiv = document.createElement('div'); secDiv.className='section';
-    // header
-    const header = document.createElement('div'); header.className='section-header';
-    const left = document.createElement('div'); left.className='section-left';
-    const title = document.createElement('div'); title.className='section-title'; title.innerText = sec.name || '(bez názvu)';
-    const person = document.createElement('div'); person.className='section-person'; person.innerText = sec.person || '(bez osoby)';
-    left.appendChild(title); left.appendChild(person);
-    header.appendChild(left);
-    const actions = document.createElement('div'); actions.className='section-actions';
-    if(isAdmin()){
-      const delBtn = document.createElement('button'); delBtn.className='small-btn'; delBtn.title='Smazat úsek'; delBtn.innerText='🗑️';
-      delBtn.addEventListener('click', ()=> deleteSectionAPI(sec.id));
-      actions.appendChild(delBtn);
-    }
-    header.appendChild(actions);
-    secDiv.appendChild(header);
-
-    // summary
-    const summaryDiv = document.createElement('div'); summaryDiv.className='summary';
-    updateSectionSummary(sec, summaryDiv);
-    secDiv.appendChild(summaryDiv);
-
-    // tasks
-    const tasksDiv = document.createElement('div'); tasksDiv.className='tasks';
-    (sec.tasks||[]).forEach((task, tIdx)=>{
-      normalizeTask(task);
-      const taskDiv = document.createElement('div'); taskDiv.className='task';
-      const taskHeader = document.createElement('div'); taskHeader.className='task-header';
-      const txt = document.createElement('div'); txt.className='task-text'; txt.innerText = task.text;
-      taskHeader.appendChild(txt);
-      const controls = document.createElement('div'); controls.className='task-controls';
-      if(isAdmin()){
-        const delTaskBtn = document.createElement('button'); delTaskBtn.className='small-btn'; delTaskBtn.innerText='🗑️';
-        delTaskBtn.addEventListener('click', ()=> deleteTaskAPI(task.id));
-        controls.appendChild(delTaskBtn);
-      }
-      taskHeader.appendChild(controls);
-      taskDiv.appendChild(taskHeader);
-
-      // days row
-      const daysRow = document.createElement('div'); daysRow.className='task-days';
-      for(let i=0;i<7;i++){
-        const cell = document.createElement('div'); const state = task.days[i] || 'day-none';
-        cell.className = 'day-cell ' + state;
-        cell.title = days[i];
-        if(isAdmin()){
-          cell.addEventListener('click', ()=> toggleTaskDayAPI(sIdx,tIdx,i));
-        }
-        daysRow.appendChild(cell);
-      }
-      taskDiv.appendChild(daysRow);
-
-      // comments
-      const commentDiv = document.createElement('div'); commentDiv.className='comments';
-      if((task.comments || []).length > 0){
-        task.comments.forEach((c, idx)=>{
-          const cItem = document.createElement('div'); cItem.className='comment-item';
-          cItem.innerHTML = `<div>• ${c}</div>`;
-          if(isAdmin()){
-            const delC = document.createElement('div'); delC.style.cursor='pointer'; delC.style.color='#b33'; delC.innerText='❌';
-            delC.addEventListener('click', ()=> deleteTaskCommentAPI(sIdx,tIdx,idx));
-            cItem.appendChild(delC);
-          }
-          commentDiv.appendChild(cItem);
-        });
-      } else commentDiv.innerText = 'Žádné komentáře';
-      taskDiv.appendChild(commentDiv);
-
-      // add comment input (admin only)
-      if(isAdmin()){
-        const commentInput = document.createElement('input'); commentInput.type='text'; commentInput.placeholder='Přidat komentář';
-        const commentBtn = document.createElement('button'); commentBtn.innerText='➕';
-        commentBtn.addEventListener('click', ()=> {
-          if(commentInput.value.trim()===''){ alert('Napiš komentář'); return; }
-          addTaskCommentAPI(sIdx,tIdx,commentInput.value.trim());
-        });
-        taskDiv.appendChild(commentInput);
-        taskDiv.appendChild(commentBtn);
-      }
-
-      tasksDiv.appendChild(taskDiv);
-    });
-
-    // new task block (admin only)
-    if(isAdmin()){
-      const newTaskDiv = document.createElement('div'); newTaskDiv.style.marginTop='10px';
-      const newRow = document.createElement('div'); newRow.style.display='flex'; newRow.style.gap='8px'; newRow.style.alignItems='center';
-      const newInput = document.createElement('input'); newInput.placeholder='Nový úkol'; newInput.style.flex='1';
-      const addBtn = document.createElement('button'); addBtn.innerText='➕ Přidat úkol';
-      addBtn.addEventListener('click', ()=>{
-        const picks = Array.from(newTaskDiv.querySelectorAll('.day-pick'));
-        const selected = picks.map((p,idx)=>p.classList.contains('active')?idx:-1).filter(i=>i>=0);
-        if(newInput.value.trim()===''){ alert('Napiš text úkolu'); return; }
-        let daysArr;
-        if(selected.length===0) daysArr = Array(7).fill('day-waiting');
-        else { daysArr = Array(7).fill('day-none'); selected.forEach(i=> daysArr[i]='day-waiting'); }
-        addTaskAPI(sec.id, newInput.value.trim(), daysArr);
-        newInput.value='';
-        picks.forEach(p=>p.classList.remove('active'));
-      });
-      newRow.appendChild(newInput); newRow.appendChild(addBtn); newTaskDiv.appendChild(newRow);
-
-      // day picker
-      const dayPicker = document.createElement('div'); dayPicker.className='day-picker';
-      days.forEach(dn=>{
-        const p = document.createElement('div'); p.className='day-pick'; p.innerText = dn;
-        p.addEventListener('click', ()=> p.classList.toggle('active'));
-        dayPicker.appendChild(p);
-      });
-      newTaskDiv.appendChild(dayPicker);
-      tasksDiv.appendChild(newTaskDiv);
-    }
-
-    secDiv.appendChild(tasksDiv);
-    container.appendChild(secDiv);
-  });
-}
-
-// ====== Export PDF ======
-function exportPDF(){
-  html2canvas(document.getElementById('calendarContainer')).then(canvas=>{
-    const imgData = canvas.toDataURL('image/png');
-    const pdf = new jsPDF.jsPDF('p','pt','a4');
-    const imgProps = pdf.getImageProperties(imgData);
-    const pdfWidth = pdf.internal.pageSize.getWidth();
-    const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
-    pdf.addImage(imgData,'PNG',0,0,pdfWidth,pdfHeight);
-    pdf.save('uklidovy_kalendar.pdf');
-  });
-}
-
-// ====== Init bindings & start ======
-window.addSection = async function(){
-  const name = document.getElementById('sectionName').value.trim();
-  const person = document.getElementById('sectionPerson').value.trim();
-  if(!name||!person){ alert('Vyplň název a osobu'); return; }
-  await addSectionAPI(name, person);
-  document.getElementById('sectionName').value=''; document.getElementById('sectionPerson').value='';
-};
-window.resetAll = async function(){
-  if(!isAdmin()){ alert('Jen admin smí resetovat'); return; }
-  if(!confirm('Opravdu smazat vše?')) return;
-  await supabase.from('tasks').delete();
-  await supabase.from('sections').delete();
-  await loadSections();
-};
-window.exportPDF = exportPDF;
-
-// načti session a data
-checkSession();
-loadSections();
-
-// posloucháme změny (přihlášení/odhlášení v jiném tab)
-supabase.auth.onAuthStateChange((event) => {
-  checkSession();
-  loadSections();
-});
-</script>
-
-<!-- ====== STYLY (převzato z tvé hezčí verze) ====== -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm" type="module"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <style>
-  body { font-family: Inter, system-ui, Arial, sans-serif; background:#f4f7fb; margin:0; padding:22px; color:#14303a; }
-  .container { max-width:1200px; margin:0 auto; }
-  h1 { text-align:center; color:#0f3550; margin-bottom:18px; font-weight:600; }
-  .controls { display:flex; gap:10px; flex-wrap:wrap; margin-bottom:12px; align-items:center; justify-content:center; }
-  .week-header { display:flex; gap:6px; margin-bottom:16px; }
-  .week-day-box { flex:1; text-align:center; }
-  .week-day { padding:10px 6px; background:#e9f4ff; border-radius:8px; font-weight:600; color:#08345a; }
-  .week-day-summary { font-size:12px; background:#f0fbff; border-radius:6px; margin-top:6px; padding:6px 6px; color:#06507a; }
-  .section { background:#ffffff; border-radius:14px; padding:14px; margin-bottom:14px; box-shadow:0 6px 18px rgba(7,18,29,0.05); border:1px solid rgba(3,36,60,0.03); }
-  .section-header { display:flex; gap:12px; justify-content:space-between; align-items:center; }
-  .section-left { display:flex; gap:12px; align-items:center; cursor:pointer; }
-  .section-title { font-weight:700; font-size:17px; color:#0b4270; }
-  .section-person { font-style:italic; color:#2f6a8b; font-size:13px; }
-  .summary { background:#f6fbff; border-radius:10px; padding:8px 10px; margin-top:10px; display:flex; gap:12px; font-size:14px; color:#0e4f6f; align-items:center; }
-  .tasks { margin-top:12px; }
-  .task { background:#fdfefe; border-radius:10px; padding:10px; margin-bottom:10px; box-shadow:0 2px 6px rgba(7,16,20,0.04); }
-  .task-header { display:flex; justify-content:space-between; align-items:center; gap:8px; }
-  .task-text { font-weight:600; color:#0b3a56; }
-  .task-controls { display:flex; gap:8px; align-items:center; }
-  .task-days { display:flex; gap:6px; margin-top:8px; }
-  .day-cell { flex:1; text-align:center; padding:6px 4px; border-radius:6px; font-size:12px; color:white; cursor:pointer; user-select:none; transition:all 0.15s ease; min-width:30px; }
-  .day-waiting { background:#ffd86b; color:#3a2b00; }
-  .day-done { background:#5ce1a2; color:#064022; }
-  .day-bad { background:#ff8a85; color:#5b1516; }
-  .day-none { background:#eef3f6; color:#7a8a93; cursor:default; opacity:0.9; }
-  input[type=text] { padding:8px 10px; border-radius:8px; border:1px solid #d6e6ef; font-size:14px; width:220px; outline:none; }
-  button { padding:8px 10px; border-radius:8px; border:none; cursor:pointer; background:#0b5f8f; color:white; font-size:13px; }
-  button:hover { filter:brightness(0.95); }
-  .small-btn { padding:6px 8px; font-size:13px; border-radius:8px; background:#dfeff8; color:#094a6f; border:1px solid rgba(4,70,100,0.06); cursor:pointer; }
-  .day-picker { display:flex; gap:6px; margin-top:8px; }
-  .day-pick { padding:6px 8px; border-radius:8px; background:#f0f7fb; cursor:pointer; user-select:none; border:1px solid #e1eef6; color:#074a6b; font-weight:600; font-size:12px; }
-  .day-pick.active { background:#0b6f9e; color:white; border-color:transparent; }
-  #authBar { display:flex; gap:12px; align-items:center; justify-content:center; margin-bottom:12px; }
+/* --- zjednodušený styl --- */
+body { font-family: Inter, system-ui, Arial, sans-serif; background:#f4f7fb; margin:0; padding:22px; color:#14303a; }
+.container { max-width:1200px; margin:0 auto; }
+h1 { text-align:center; color:#0f3550; margin-bottom:18px; font-weight:600; }
+.controls { display:flex; gap:10px; flex-wrap:wrap; margin-bottom:12px; align-items:center; justify-content:center; }
+input[type=text] { padding:8px 10px; border-radius:8px; border:1px solid #d6e6ef; font-size:14px; width:220px; outline:none; }
+button { padding:8px 10px; border-radius:8px; border:none; cursor:pointer; background:#0b5f8f; color:white; font-size:13px; }
+.week-header { display:flex; gap:6px; margin-bottom:16px; }
+.week-day-box { flex:1; text-align:center; }
+.week-day { padding:10px 6px; background:#e9f4ff; border-radius:8px; font-weight:600; color:#08345a; box-shadow: 0 1px 0 rgba(0,0,0,0.03); }
+.week-day-summary { font-size:12px; background:#f0fbff; border-radius:6px; margin-top:6px; padding:6px 6px; color:#06507a; box-shadow: 0 1px 0 rgba(0,0,0,0.02); }
+.section { background:#ffffff; border-radius:14px; padding:14px; margin-bottom:14px; box-shadow:0 6px 18px rgba(7,18,29,0.05); border:1px solid rgba(3,36,60,0.03); }
+.section-header { display:flex; gap:12px; justify-content:space-between; align-items:center; }
+.section-left { display:flex; gap:12px; align-items:center; cursor:pointer; }
+.section-title { font-weight:700; font-size:17px; color:#0b4270; }
+.section-person { font-style:italic; color:#2f6a8b; font-size:13px; }
+.tasks { margin-top:12px; }
+.task { background:#fdfefe; border-radius:10px; padding:10px; margin-bottom:10px; box-shadow:0 2px 6px rgba(7,16,20,0.04); }
+.task-header { display:flex; justify-content:space-between; align-items:center; gap:8px; }
+.task-text { font-weight:600; color:#0b3a56; }
+.task-controls { display:flex; gap:8px; align-items:center; }
+.task-days { display:flex; gap:6px; margin-top:8px; }
+.day-cell { flex:1; text-align:center; padding:6px 4px; border-radius:6px; font-size:12px; color:white; cursor:pointer; user-select:none; transition:all 0.15s ease; min-width:30px; }
+.day-waiting { background:#ffd86b; color:#3a2b00; }
+.day-done { background:#5ce1a2; color:#064022; }
+.day-bad { background:#ff8a85; color:#5b1516; }
+.day-none { background:#eef3f6; color:#7a8a93; cursor:default; opacity:0.9; box-shadow: inset 0 0 0 1px rgba(0,0,0,0.02); }
 </style>
 </head>
 <body>
 <div class="container">
   <h1>DUSSMANN - ŠKODA DOOSAN</h1>
-
-  <div id="authBar">
-    <div id="authStatus">Načítám...</div>
-    <div id="authWrap"></div>
-  </div>
-
   <div class="controls">
     <input type="text" id="sectionName" placeholder="Název úseku">
     <input type="text" id="sectionPerson" placeholder="Osoba">
-    <button onclick="addSection()">➕ Přidat úsek</button>
-    <button onclick="resetAll()" class="small-btn">Reset vše</button>
-    <button onclick="exportPDF()" class="small-btn">Export PDF</button>
+    <button id="btnAddSection">➕ Přidat úsek</button>
+    <button id="btnSignIn">Přihlásit</button>
+    <button id="btnSignOut">Odhlásit</button>
+    <button onclick="exportPDF()">Export PDF</button>
   </div>
-
   <div id="weekHeader" class="week-header"></div>
   <div id="calendarContainer"></div>
 </div>
+
+<script type="module">
+import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
+
+const supabaseUrl = 'https://ndkovjnkfybtxspzdbpk.supabase.co';
+const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5ka292am5rZnlidHhzcHpkYnBrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjIwMjAzOTcsImV4cCI6MjA3NzU5NjM5N30.SUds0wMRrEJaYy5kuyud0ggQrKh6ZodSfmDwDybH4MI';
+const supabase = createClient(supabaseUrl, supabaseKey);
+
+let user = null;
+let sections = [];
+
+// ----- Auth -----
+async function signIn() {
+  const { data, error } = await supabase.auth.signInWithOAuth({ provider: 'google' });
+  if(error) alert('Chyba při přihlášení: '+error.message);
+}
+async function signOut() {
+  await supabase.auth.signOut();
+  user = null;
+  render();
+}
+supabase.auth.onAuthStateChange((event, session)=>{
+  user = session?.user || null;
+  loadSections();
+});
+
+document.getElementById('btnSignIn').onclick = signIn;
+document.getElementById('btnSignOut').onclick = signOut;
+
+// ----- Load sections -----
+async function loadSections(){
+  if(!user) return;
+  const { data, error } = await supabase.from('sections').select('*, tasks(*)').order('id');
+  if(error){ console.error(error); return; }
+  sections = data.map(s=>{ s.tasks=s.tasks||[]; return s; });
+  render();
+}
+
+// ----- Add section -----
+document.getElementById('btnAddSection').onclick = async ()=>{
+  if(!user){ alert("Musíš se přihlásit"); return; }
+  const name = document.getElementById("sectionName").value.trim();
+  const person = document.getElementById("sectionPerson").value.trim();
+  if(!name||!person){ alert("Vyplň úsek a osobu!"); return; }
+  const { data, error } = await supabase.from('sections').insert([{ name, person }]).select();
+  if(error){ console.error(error); return; }
+  data[0].tasks=[];
+  sections.push(data[0]);
+  document.getElementById("sectionName").value="";
+  document.getElementById("sectionPerson").value="";
+  render();
+};
+
+// ----- Render -----
+const days = ["Po","Út","St","Čt","Pá","So","Ne"];
+function renderWeekHeader(){
+  const header = document.getElementById("weekHeader");
+  header.innerHTML="";
+  const today = new Date();
+  const dayOfWeek = today.getDay()||7;
+  const monday = new Date(today); monday.setDate(today.getDate()-dayOfWeek+1);
+  for(let i=0;i<7;i++){
+    const d = new Date(monday); d.setDate(monday.getDate()+i);
+    const box = document.createElement("div"); box.className="week-day-box";
+    const dayDiv = document.createElement("div"); dayDiv.className="week-day";
+    if(new Date().toDateString()===d.toDateString()) dayDiv.style.boxShadow="inset 0 -4px 0 rgba(11,111,158,0.12)";
+    dayDiv.innerText=`${days[i]} ${d.getDate()}.${d.getMonth()+1}`;
+    box.appendChild(dayDiv);
+    header.appendChild(box);
+  }
+}
+function render(){
+  renderWeekHeader();
+  const container = document.getElementById("calendarContainer");
+  container.innerHTML="";
+  sections.forEach(sec=>{
+    const secDiv = document.createElement("div"); secDiv.className="section";
+    const header = document.createElement("div"); header.className="section-header";
+    const left = document.createElement("div"); left.className="section-left";
+    const title = document.createElement("div"); title.className="section-title"; title.innerText=sec.name;
+    const person = document.createElement("div"); person.className="section-person"; person.innerText=sec.person;
+    left.appendChild(title); left.appendChild(person);
+    header.appendChild(left);
+    secDiv.appendChild(header);
+    container.appendChild(secDiv);
+  });
+}
+
+// ----- Export PDF -----
+window.exportPDF = function(){
+  html2canvas(document.getElementById("calendarContainer")).then(canvas=>{
+    const imgData = canvas.toDataURL("image/png");
+    const pdf = new jspdf.jsPDF("p","pt","a4");
+    const imgProps = pdf.getImageProperties(imgData);
+    const pdfWidth = pdf.internal.pageSize.getWidth();
+    const pdfHeight = (imgProps.height*pdfWidth)/imgProps.width;
+    pdf.addImage(imgData,'PNG',0,0,pdfWidth,pdfHeight);
+    pdf.save("uklidovy_kalendar.pdf");
+  });
+}
+
+</script>
 </body>
 </html>
