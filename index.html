@@ -34,14 +34,13 @@ button { padding:8px 10px; border-radius:8px; border:none; cursor:pointer; backg
   <div class="controls">
     <input type="text" id="sectionName" placeholder="Název úseku">
     <input type="text" id="sectionPerson" placeholder="Osoba">
-    
-    <!-- Přihlášení / Registrace -->
+
+    <!-- Přihlášení -->
     <input type="email" id="email" placeholder="Email">
     <input type="password" id="password" placeholder="Heslo">
     <button type="button" id="btnSignIn">Přihlásit</button>
-    <button type="button" id="btnSignUp">Registrovat</button>
     <button type="button" id="btnSignOut">Odhlásit</button>
-    
+
     <button type="button" onclick="exportPDF()">Export PDF</button>
   </div>
   <div id="weekHeader" class="week-header"></div>
@@ -57,45 +56,81 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 
 let user = null;
 let sections = [];
+const allowedUsers = ["tvoje@email.cz"]; // <-- sem dej povolené emaily
+
+// ----- Inicializace session -----
+async function initAuth() {
+  const { data: { session }, error } = await supabase.auth.getSession();
+  if(error){ console.error("Chyba načtení session:", error); return; }
+
+  user = session?.user || null;
+  if(user && !allowedUsers.includes(user.email)){
+    alert("Tento účet nemá oprávnění!");
+    await supabase.auth.signOut();
+    user = null;
+  }
+  updateAuthUI();
+  loadSections();
+}
 
 // ----- Auth -----
 async function signIn() {
   const email = document.getElementById("email").value.trim();
   const password = document.getElementById("password").value.trim();
-  console.log("Trying to sign in", email); // kontrola
   if(!email || !password){ alert("Vyplň email i heslo"); return; }
-  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-  console.log("Sign in result", data, error); // kontrola
-  if(error){ alert("Chyba při přihlášení: "+error.message); return; }
-  user = data.user;
-  loadSections();
-}
 
-async function signUp() {
-  const email = document.getElementById("email").value.trim();
-  const password = document.getElementById("password").value.trim();
-  console.log("Trying to sign up", email); // kontrola
-  if(!email || !password){ alert("Vyplň email i heslo"); return; }
-  const { data, error } = await supabase.auth.signUp({ email, password });
-  console.log("Sign up result", data, error); // kontrola
-  if(error){ alert("Chyba při registraci: "+error.message); return; }
-  alert("Registrováno! Nyní se můžeš přihlásit.");
+  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+  if(error){ alert("Chyba při přihlášení: "+error.message); return; }
+
+  if(!allowedUsers.includes(email)){
+    alert("Tento účet nemá oprávnění!");
+    await supabase.auth.signOut();
+    return;
+  }
+
+  user = data.user;
+  updateAuthUI();
+  loadSections();
 }
 
 async function signOut() {
   await supabase.auth.signOut();
   user = null;
+  updateAuthUI();
   render();
 }
 
+// --- Sleduj změny session ---
 supabase.auth.onAuthStateChange((event, session)=>{
   user = session?.user || null;
+  if(user && !allowedUsers.includes(user.email)){
+    alert("Tento účet nemá oprávnění!");
+    supabase.auth.signOut();
+    user = null;
+  }
+  updateAuthUI();
   loadSections();
 });
 
-document.getElementById('btnSignIn').onclick = signIn;
-document.getElementById('btnSignUp').onclick = signUp;
-document.getElementById('btnSignOut').onclick = signOut;
+// ----- Skrytí/přihlášení UI -----
+function updateAuthUI(){
+  const emailInput = document.getElementById("email");
+  const passwordInput = document.getElementById("password");
+  const btnSignIn = document.getElementById("btnSignIn");
+  const btnSignOut = document.getElementById("btnSignOut");
+
+  if(user){
+    emailInput.style.display = "none";
+    passwordInput.style.display = "none";
+    btnSignIn.style.display = "none";
+    btnSignOut.style.display = "inline-block";
+  } else {
+    emailInput.style.display = "inline-block";
+    passwordInput.style.display = "inline-block";
+    btnSignIn.style.display = "inline-block";
+    btnSignOut.style.display = "none";
+  }
+}
 
 // ----- Load sections -----
 async function loadSections(){
@@ -168,7 +203,15 @@ window.exportPDF = function(){
     pdf.save("uklidovy_kalendar.pdf");
   });
 }
+
+// ----- Inicializace auth -----
+initAuth();
+
+document.getElementById('btnSignIn').onclick = signIn;
+document.getElementById('btnSignOut').onclick = signOut;
+
 </script>
 </body>
 </html>
+
 
