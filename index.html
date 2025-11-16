@@ -38,11 +38,11 @@ button { padding:8px 10px; border-radius:8px; border:none; cursor:pointer; backg
     <!-- Přihlášení / Registrace -->
     <input type="email" id="email" placeholder="Email">
     <input type="password" id="password" placeholder="Heslo">
-    <button id="btnSignIn">Přihlásit</button>
-    <button id="btnSignUp">Registrovat</button>
-    <button id="btnSignOut">Odhlásit</button>
+    <button type="button" id="btnSignIn">Přihlásit</button>
+    <button type="button" id="btnSignUp">Registrovat</button>
+    <button type="button" id="btnSignOut">Odhlásit</button>
     
-    <button onclick="exportPDF()">Export PDF</button>
+    <button type="button" onclick="exportPDF()">Export PDF</button>
   </div>
   <div id="weekHeader" class="week-header"></div>
   <div id="calendarContainer"></div>
@@ -62,8 +62,10 @@ let sections = [];
 async function signIn() {
   const email = document.getElementById("email").value.trim();
   const password = document.getElementById("password").value.trim();
+  console.log("Trying to sign in", email); // kontrola
   if(!email || !password){ alert("Vyplň email i heslo"); return; }
   const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+  console.log("Sign in result", data, error); // kontrola
   if(error){ alert("Chyba při přihlášení: "+error.message); return; }
   user = data.user;
   loadSections();
@@ -72,8 +74,10 @@ async function signIn() {
 async function signUp() {
   const email = document.getElementById("email").value.trim();
   const password = document.getElementById("password").value.trim();
+  console.log("Trying to sign up", email); // kontrola
   if(!email || !password){ alert("Vyplň email i heslo"); return; }
   const { data, error } = await supabase.auth.signUp({ email, password });
+  console.log("Sign up result", data, error); // kontrola
   if(error){ alert("Chyba při registraci: "+error.message); return; }
   alert("Registrováno! Nyní se můžeš přihlásit.");
 }
@@ -167,3 +171,4 @@ window.exportPDF = function(){
 </script>
 </body>
 </html>
+
