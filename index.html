@@ -7,7 +7,6 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <style>
-/* --- zjednodušený styl --- */
 body { font-family: Inter, system-ui, Arial, sans-serif; background:#f4f7fb; margin:0; padding:22px; color:#14303a; }
 .container { max-width:1200px; margin:0 auto; }
 h1 { text-align:center; color:#0f3550; margin-bottom:18px; font-weight:600; }
@@ -17,18 +16,11 @@ button { padding:8px 10px; border-radius:8px; border:none; cursor:pointer; backg
 .week-header { display:flex; gap:6px; margin-bottom:16px; }
 .week-day-box { flex:1; text-align:center; }
 .week-day { padding:10px 6px; background:#e9f4ff; border-radius:8px; font-weight:600; color:#08345a; box-shadow: 0 1px 0 rgba(0,0,0,0.03); }
-.week-day-summary { font-size:12px; background:#f0fbff; border-radius:6px; margin-top:6px; padding:6px 6px; color:#06507a; box-shadow: 0 1px 0 rgba(0,0,0,0.02); }
 .section { background:#ffffff; border-radius:14px; padding:14px; margin-bottom:14px; box-shadow:0 6px 18px rgba(7,18,29,0.05); border:1px solid rgba(3,36,60,0.03); }
 .section-header { display:flex; gap:12px; justify-content:space-between; align-items:center; }
 .section-left { display:flex; gap:12px; align-items:center; cursor:pointer; }
 .section-title { font-weight:700; font-size:17px; color:#0b4270; }
 .section-person { font-style:italic; color:#2f6a8b; font-size:13px; }
-.tasks { margin-top:12px; }
-.task { background:#fdfefe; border-radius:10px; padding:10px; margin-bottom:10px; box-shadow:0 2px 6px rgba(7,16,20,0.04); }
-.task-header { display:flex; justify-content:space-between; align-items:center; gap:8px; }
-.task-text { font-weight:600; color:#0b3a56; }
-.task-controls { display:flex; gap:8px; align-items:center; }
-.task-days { display:flex; gap:6px; margin-top:8px; }
 .day-cell { flex:1; text-align:center; padding:6px 4px; border-radius:6px; font-size:12px; color:white; cursor:pointer; user-select:none; transition:all 0.15s ease; min-width:30px; }
 .day-waiting { background:#ffd86b; color:#3a2b00; }
 .day-done { background:#5ce1a2; color:#064022; }
@@ -42,9 +34,8 @@ button { padding:8px 10px; border-radius:8px; border:none; cursor:pointer; backg
   <div class="controls">
     <input type="text" id="sectionName" placeholder="Název úseku">
     <input type="text" id="sectionPerson" placeholder="Osoba">
-    <button id="btnAddSection">➕ Přidat úsek</button>
-
-    <!-- Nové inputy pro email a heslo -->
+    
+    <!-- Přihlášení / Registrace -->
     <input type="email" id="email" placeholder="Email">
     <input type="password" id="password" placeholder="Heslo">
     <button id="btnSignIn">Přihlásit</button>
@@ -61,7 +52,7 @@ button { padding:8px 10px; border-radius:8px; border:none; cursor:pointer; backg
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
 
 const supabaseUrl = 'https://ndkovjnkfybtxspzdbpk.supabase.co';
-const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5ka292am5rZnlidHhzcHpkYnBrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjIwMjAzOTcsImV4cCI6MjA3NzU5NjM5N30.SUds0wMRrEJaYy5kuyud0ggQrKh6ZodSfmDwDybH4MI.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5ka292am5rZnlidHhzcHpkYnBrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjIwMjAzOTcsImV4cCI6MjA3NzU5NjM5N30.SUds0wMRrEJaYy5kuyud0ggQrKh6ZodSfmDwDybH4MIKEeyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5ka292am5rZnlidHhzcHpkYnBrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjIwMjAzOTcsImV4cCI6MjA3NzU5NjM5N30.SUds0wMRrEJaYy5kuyud0ggQrKh6ZodSfmDwDybH4MIY'; // nahraď svým anon key
+const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5ka292am5rZnlidHhzcHpkYnBrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjIwMjAzOTcsImV4cCI6MjA3NzU5NjM5N30.SUds0wMRrEJaYy5kuyud0ggQrKh6ZodSfmDwDybH4MI';
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 let user = null;
@@ -173,7 +164,6 @@ window.exportPDF = function(){
     pdf.save("uklidovy_kalendar.pdf");
   });
 }
-
 </script>
 </body>
 </html>
