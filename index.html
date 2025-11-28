@@ -5,112 +5,323 @@
 <meta name="viewport" content="width=device-width,initial-scale=1" />
 <title>DUSSMANN - ŠKODA DOOSAN — CLEANDER</title>
 
-<!-- Supabase client (ESM) -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm" type="module"></script>
-<!-- html2canvas + jsPDF -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
 <style>
-  :root{
-    --bg:#f4f7fb;
-    --card:#fff;
-    --accent:#0b5f8f;
-    --muted:#7a8a93;
-    --shadow: 0 8px 24px rgba(7,18,29,0.06);
-    --radius:14px;
-  }
-  *{box-sizing:border-box}
-  body{font-family:Inter,system-ui,Arial,sans-serif;background:var(--bg);margin:0;color:#14303a;padding:20px;}
-  .container{max-width:1200px;margin:0 auto}
-  header{display:flex;gap:12px;align-items:center;justify-content:space-between;margin-bottom:18px}
-  h1{font-size:20px;margin:0;color:#0f3550}
-  .controls{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
-  input[type=text], input[type=email], input[type=password], select{padding:8px 10px;border-radius:10px;border:1px solid #d6e6ef;font-size:14px;outline:none}
-  button{padding:8px 10px;border-radius:10px;border:none;cursor:pointer;background:var(--accent);color:white;font-size:13px}
-  .small{padding:6px 8px;font-size:13px}
-  .panel{background:var(--card);border-radius:var(--radius);padding:12px;box-shadow:var(--shadow);margin-bottom:14px;border:1px solid rgba(3,36,60,0.03)}
-  .week-controls{display:flex;gap:8px;align-items:center}
-  .week-header{display:flex;gap:6px;margin-bottom:12px}
-  .week-day-box{flex:1;text-align:center}
-  .week-day{padding:10px 6px;background:#e9f4ff;border-radius:10px;font-weight:600;color:#08345a;box-shadow:0 1px 0 rgba(0,0,0,0.03)}
-  .grid{display:grid;grid-template-columns:1fr;gap:12px}
-  @media(min-width:880px){.grid{grid-template-columns:1fr 1fr}}
-  .section-row{display:flex;flex-direction:column;background:#fff;border-radius:12px;padding:10px;gap:10px;border:1px solid rgba(3,36,60,0.03)}
-  .section-header{display:flex;align-items:center;justify-content:space-between;gap:8px}
-  .section-title{font-weight:700;color:#0b4270}
-  .section-person{font-style:italic;color:#2f6a8b;font-size:13px}
-  .days-row{display:flex;gap:6px}
-  .day-cell{flex:1;text-align:center;padding:8px 6px;border-radius:8px;font-size:12px;color:white;cursor:pointer;user-select:none;min-width:36px}
-  .day-none{background:#eef3f6;color:var(--muted)}
-  .day-waiting{background:#ffd86b;color:#3a2b00}
-  .day-done{background:#5ce1a2;color:#064022}
-  .day-bad{background:#ff8a85;color:#5b1516}
-  .muted{color:var(--muted)}
-  .center{display:flex;gap:8px;align-items:center}
-  .form-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
-  label.small{font-size:13px;color:var(--muted)}
- .comment-toggle {
-  background:#0b5f8f;
-  color:white;
-  padding:4px 8px;
-  font-size:12px;
-  border-radius:8px;
-  cursor:pointer;
-}
+    /* ========== KOMPLETNÍ STYLY ========== */
+    :root {
+        --bg: #f4f7fb;
+        --card: #fff;
+        --accent: #0b5f8f;
+        --muted: #7a8a93;
+        --shadow: 0 8px 24px rgba(7, 18, 29, 0.06);
+        --radius: 14px;
+    }
+    * {
+        box-sizing: border-box
+    }
+    body {
+        font-family: Inter, system-ui, Arial, sans-serif;
+        background: var(--bg);
+        margin: 0;
+        color: #14303a;
+        padding: 20px;
+    }
+    .container {
+        max-width: 1200px;
+        margin: 0 auto
+    }
+    header {
+        display: flex;
+        gap: 12px;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 18px
+    }
+    h1 {
+        font-size: 20px;
+        margin: 0;
+        color: #0f3550
+    }
+    .controls {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        align-items: center
+    }
+    input[type=text],
+    input[type=email],
+    input[type=password],
+    select {
+        padding: 8px 10px;
+        border-radius: 10px;
+        border: 1px solid #d6e6ef;
+        font-size: 14px;
+        outline: none
+    }
+    button {
+        padding: 8px 10px;
+        border-radius: 10px;
+        border: none;
+        cursor: pointer;
+        background: var(--accent);
+        color: white;
+        font-size: 13px
+    }
+    .small {
+        padding: 6px 8px;
+        font-size: 13px
+    }
+    .panel {
+        background: var(--card);
+        border-radius: var(--radius);
+        padding: 12px;
+        box-shadow: var(--shadow);
+        margin-bottom: 14px;
+        border: 1px solid rgba(3, 36, 60, 0.03)
+    }
+    .week-controls {
+        display: flex;
+        gap: 8px;
+        align-items: center
+    }
+    .week-header {
+        display: flex;
+        gap: 6px;
+        margin-bottom: 12px
+    }
+    .week-day-box {
+        flex: 1;
+        text-align: center
+    }
+    .week-day {
+        padding: 10px 6px;
+        background: #e9f4ff;
+        border-radius: 10px;
+        font-weight: 600;
+        color: #08345a;
+        box-shadow: 0 1px 0 rgba(0, 0, 0, 0.03)
+    }
+    .grid {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 12px
+    }
+    @media(min-width:880px) {
+        .grid {
+            grid-template-columns: 1fr 1fr
+        }
+    }
+    .section-row {
+        display: flex;
+        flex-direction: column;
+        background: #fff;
+        border-radius: 12px;
+        padding: 10px;
+        gap: 10px;
+        border: 1px solid rgba(3, 36, 60, 0.03)
+    }
+    .section-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px
+    }
+    .section-title {
+        font-weight: 700;
+        color: #0b4270
+    }
+    .section-person {
+        font-style: italic;
+        color: #2f6a8b;
+        font-size: 13px
+    }
+    .days-row {
+        display: flex;
+        gap: 6px
+    }
+    .day-cell {
+        flex: 1;
+        text-align: center;
+        padding: 8px 6px;
+        border-radius: 8px;
+        font-size: 12px;
+        color: white;
+        cursor: pointer;
+        user-select: none;
+        min-width: 36px
+    }
+    .day-none {
+        background: #eef3f6;
+        color: var(--muted)
+    }
+    .day-waiting {
+        background: #ffd86b;
+        color: #3a2b00
+    }
+    .day-done {
+        background: #5ce1a2;
+        color: #064022
+    }
+    .day-bad {
+        background: #ff8a85;
+        color: #5b1516
+    }
+    .muted {
+        color: var(--muted)
+    }
+    .center {
+        display: flex;
+        gap: 8px;
+        align-items: center
+    }
+    .form-row {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        align-items: center
+    }
+    label.small {
+        font-size: 13px;
+        color: var(--muted)
+    }
+    .comment-toggle {
+        background: #0b5f8f;
+        color: white;
+        padding: 4px 8px;
+        font-size: 12px;
+        border-radius: 8px;
+        cursor: pointer;
+    }
+    .comment-box {
+        margin-top: 10px;
+        background: #f7fbff;
+        border-radius: 10px;
+        padding: 10px;
+        display: none;
+        border: 1px solid #cfe4ff;
+    }
+    .comment-item {
+        background: white;
+        border-radius: 8px;
+        padding: 8px;
+        margin-bottom: 6px;
+        border-left: 4px solid #0b5f8f;
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+    }
+    .comment-item.complaint {
+        border-left: 4px solid #ff5757;
+        background: #ffeaea;
+    }
+    .comment-content {
+        flex-grow: 1;
+    }
+    .comment-author {
+        font-size: 12px;
+        color: #555;
+    }
+    .comment-msg {
+        margin-top: 4px;
+        font-size: 14px;
+    }
+    .comment-form {
+        display: flex;
+        gap: 6px;
+        margin-top: 8px;
+    }
+    .comment-form textarea {
+        flex: 1;
+        border-radius: 8px;
+        padding: 6px;
+        font-size: 14px;
+        border: 1px solid #c4d5e5;
+    }
+    .comment-form button {
+        background: var(--accent);
+        color: white;
+        align-self: flex-start;
+    }
+    .badge {
+        background: #eef6fb;
+        padding: 6px 8px;
+        border-radius: 8px;
+        color: #0b4270;
+        font-weight: 600
+    }
 
-.comment-box {
-  margin-top:10px;
-  background:#f7fbff;
-  border-radius:10px;
-  padding:10px;
-  display:none;
-  border:1px solid #cfe4ff;
-}
+    /* ÚKOLY NOVÝ DESIGN */
+    .task-list-container {
+        margin-top: 10px;
+        border-top: 1px solid #e0e8f0;
+        padding-top: 10px;
+    }
+    .task-item-detail {
+        display: flex;
+        flex-direction: column;
+        background: #f7fbff;
+        border-radius: 10px;
+        padding: 8px;
+        margin-bottom: 8px;
+        border: 1px solid #cfe4ff;
+    }
+    .task-header-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding-bottom: 4px;
+    }
+    .task-name-label {
+        font-weight: 600;
+        font-size: 14px;
+        color: #0b4270;
+    }
+    .task-days-row {
+        display: flex;
+        gap: 6px;
+        margin-top: 4px;
+        border-top: 1px solid #e0e8f0;
+        padding-top: 4px;
+    }
+    .task-day-cell {
+        flex: 1;
+        text-align: center;
+        padding: 4px 4px;
+        border-radius: 6px;
+        font-size: 11px;
+        color: white;
+        cursor: pointer;
+        user-select: none;
+        min-width: 30px;
+    }
 
-.comment-item {
-  background:white;
-  border-radius:8px;
-  padding:8px;
-  margin-bottom:6px;
-  border-left:4px solid #0b5f8f;
-}
-
-.comment-item.complaint {
-  border-left:4px solid #ff5757;
-  background:#ffeaea;
-}
-
-.comment-author {
-  font-size:12px;
-  color:#555;
-}
-
-.comment-msg {
-  margin-top:4px;
-  font-size:14px;
-}
-
-.comment-form {
-  display:flex;
-  gap:6px;
-  margin-top:8px;
-}
-
-.comment-form textarea {
-  flex:1;
-  border-radius:8px;
-  padding:6px;
-  font-size:14px;
-  border:1px solid #c4d5e5;
-}
-
-.comment-form button {
-  background:#0b5f8f;
-  color:white;
-}
- 
- .badge{background:#eef6fb;padding:6px 8px;border-radius:8px;color:#0b4270;font-weight:600}
+    .task-form-row {
+        display: flex;
+        gap: 8px;
+        margin-top: 10px;
+        padding-top: 8px;
+        border-top: 1px dashed #c0d0e0;
+    }
+    .task-form-row input[type=text] {
+        flex: 1;
+    }
+    .task-days-checkboxes label {
+        font-size: 12px;
+        color: #555;
+    }
+    .task-days-checkboxes {
+        display: flex;
+        gap: 6px;
+        align-items: center;
+    }
+    .task-form-days {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+    }
 </style>
 </head>
 <body>
@@ -151,7 +362,7 @@
         <input type="text" id="sectionName" placeholder="Název úseku" />
         <input type="text" id="sectionPerson" placeholder="Osoba" />
         <label class="small">Dny:</label>
-        <div id="dayCheckboxes" style="display:flex;gap:6px;align-items:center">
+        <div id="dayCheckboxes" class="task-days-checkboxes">
           <label><input type="checkbox" value="0" /> Po</label>
           <label><input type="checkbox" value="1" /> Út</label>
           <label><input type="checkbox" value="2" /> St</label>
@@ -161,6 +372,7 @@
           <label><input type="checkbox" value="6" /> Ne</label>
         </div>
         <button id="btnAddSection" class="small">Přidat úsek</button>
+        
       </div>
     </section>
 
@@ -184,7 +396,8 @@ const allowedUsers = [
 // ---------- Globální proměnné ----------
 let user = null;
 let sections = [];    // sections loaded from DB
-let states = [];      // states for current week
+let states = [];      // states for main sections (current week)
+let taskStates = [];  // states for detailed tasks (current week)
 let currentWeekStart = getMonday(new Date()); // Date object pondělí
 
 // ---------- DOM ready ----------
@@ -275,24 +488,30 @@ async function signOut(){
 async function loadAll(){
   await loadSections();
   await loadStatesForWeek(currentWeekStart);
+  await loadTaskStatesForWeek(currentWeekStart);
   render();
 }
 
 async function loadSections(){
   try{
+    // Načtení úseků a k nim rovnou i úkolů
     const { data, error } = await supabase
       .from('sections')
-      .select('*')
+      .select('*, tasks(*)') // Získání úseků a vnořených úkolů
       .order('id', {ascending:true});
+    
     if(error){ console.error('loadSections', error); sections = []; return; }
     sections = (data || []).map(s => {
-      // normalize days as array of ints
-      let days = s.days;
-      if(typeof days === 'string'){
-        try{ days = JSON.parse(days); }catch(e){ days = []; }
-      }
-      return { ...s, days: Array.isArray(days) ? days.map(Number) : [] };
+      // normalize section days
+      s.days = normalizeDays(s.days);
+      // normalize task days
+      s.tasks = (s.tasks || []).map(t => ({
+        ...t, 
+        days: normalizeDays(t.days)
+      }));
+      return s;
     });
+
   }catch(e){ console.error(e); sections = []; }
 }
 
@@ -302,11 +521,24 @@ async function loadStatesForWeek(weekStartDate){
     const { data, error } = await supabase
       .from('states')
       .select('*')
-      .eq('week_start', iso);
+      .eq('week_start', iso); 
     if(error){ console.error('loadStatesForWeek', error); states = []; return; }
     states = data || [];
   }catch(e){ console.error(e); states = []; }
 }
+
+async function loadTaskStatesForWeek(weekStartDate){
+  try{
+    const iso = toIsoDate(weekStartDate);
+    const { data, error } = await supabase
+      .from('task_states')
+      .select('*')
+      .eq('week_start', iso); 
+    if(error){ console.error('loadTaskStatesForWeek', error); taskStates = []; return; }
+    taskStates = data || [];
+  }catch(e){ console.error(e); taskStates = []; }
+}
+
 
 // ---------- Render ----------
 function render(){
@@ -322,8 +554,10 @@ function renderWeekHeader(){
   for(let i=0;i<7;i++){
     const d = new Date(currentWeekStart);
     d.setDate(d.getDate() + i);
-    const box = document.createElement('div'); box.className='week-day-box';
-    const dayDiv = document.createElement('div'); dayDiv.className='week-day';
+    const box = document.createElement('div'); 
+    box.className='week-day-box';
+    const dayDiv = document.createElement('div'); 
+    dayDiv.className='week-day';
     if(new Date().toDateString()===d.toDateString()) dayDiv.style.boxShadow="inset 0 -4px 0 rgba(11,111,158,0.12)";
     dayDiv.innerText = `${daysCZ[i]} ${d.getDate()}.${d.getMonth()+1}`;
     box.appendChild(dayDiv);
@@ -331,8 +565,188 @@ function renderWeekHeader(){
   }
 }
 
-function renderSections(){
-  async function loadComments(sectionId){
+
+// ========== ÚKOLY FUNKCE (nová struktura) ==========
+
+/** Vytvoří a připojí formulář pro přidání úkolu */
+function createTaskForm(sectionId) {
+    const formContainer = document.createElement('div');
+    formContainer.className = 'task-form-row';
+
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.id = `taskName-${sectionId}`;
+    input.placeholder = 'Nový úkol (např. Vytřít jídelny)';
+
+    const daysContainer = document.createElement('div');
+    daysContainer.className = 'task-form-days';
+
+    const daysCheckboxes = document.createElement('div');
+    daysCheckboxes.id = `taskDays-${sectionId}`;
+    daysCheckboxes.className = 'task-days-checkboxes';
+
+    const daysCZ = ["Po","Út","St","Čt","Pá","So","Ne"];
+    for (let i = 0; i < 7; i++) {
+        const label = document.createElement('label');
+        label.innerHTML = `<input type="checkbox" value="${i}" /> ${daysCZ[i]}`;
+        daysCheckboxes.appendChild(label);
+    }
+    
+    daysContainer.appendChild(daysCheckboxes);
+
+    const btnAdd = document.createElement('button');
+    btnAdd.className = 'small';
+    btnAdd.textContent = 'Přidat úkol';
+    btnAdd.addEventListener('click', async () => {
+        const name = input.value.trim();
+        const days = Array.from(daysCheckboxes.querySelectorAll('input[type=checkbox]:checked')).map(cb => Number(cb.value));
+
+        if (!name) { alert('Zadejte název úkolu!'); return; }
+        if (!user) { flashLoginNeeded(); return; }
+
+        await addTask(sectionId, name, days);
+        input.value = '';
+        daysCheckboxes.querySelectorAll('input[type=checkbox]').forEach(cb => cb.checked = false);
+        await loadAll(); // Znovu načíst vše pro zobrazení
+    });
+
+    formContainer.appendChild(input);
+    formContainer.appendChild(daysContainer);
+    formContainer.appendChild(btnAdd);
+    return formContainer;
+}
+
+/** Vykreslí seznam úkolů a formulář */
+function renderTasksList(section, tasksContainer) {
+    // Odstranit předchozí obsah (kromě komentářů, které jsou oddělené)
+    tasksContainer.innerHTML = '';
+    
+    // Úkoly
+    section.tasks.forEach(task => {
+        const taskItem = document.createElement('div');
+        taskItem.className = 'task-item-detail';
+        taskItem.dataset.taskId = task.id;
+
+        // Hlavička úkolu (Název a tlačítko Smazat)
+        const headerRow = document.createElement('div');
+        headerRow.className = 'task-header-row';
+        
+        const nameLabel = document.createElement('div');
+        nameLabel.className = 'task-name-label';
+        nameLabel.textContent = task.name;
+        headerRow.appendChild(nameLabel);
+
+        if (user) {
+            const btnDelete = document.createElement('button');
+            btnDelete.className = 'small';
+            btnDelete.textContent = 'Smazat úkol';
+            btnDelete.style.background = '#d9534f';
+            btnDelete.addEventListener('click', async () => {
+                if (confirm(`Opravdu smazat úkol "${task.name}"? Tím smažeš i veškeré stavy!`)) {
+                    await deleteTask(task.id);
+                    await loadAll();
+                }
+            });
+            headerRow.appendChild(btnDelete);
+        }
+
+        taskItem.appendChild(headerRow);
+
+        // Řádek s dny a stavy
+        const daysRow = document.createElement('div');
+        daysRow.className = 'task-days-row';
+
+        for (let dayIndex = 0; dayIndex < 7; dayIndex++) {
+            const cell = document.createElement('div');
+            cell.className = 'day-cell task-day-cell';
+            
+            const scheduled = task.days.includes(dayIndex);
+            
+            const stateObj = taskStates.find(ts => 
+                ts.task_id === task.id &&
+                Number(ts.day_index) === dayIndex &&
+                ts.week_start === toIsoDate(currentWeekStart)
+            );
+
+            const state = stateObj ? stateObj.state : (scheduled ? 'waiting' : 'none');
+            
+            applyStateClass(cell, state);
+            cell.dataset.taskId = task.id;
+            cell.dataset.dayIndex = dayIndex;
+            cell.dataset.state = state;
+            cell.title = scheduled ? `Plánovaný den (${dayShortName(dayIndex)})` : 'Neplánovaný den';
+
+            if(scheduled) {
+                cell.style.boxShadow = 'inset 0 -3px 0 rgba(11,111,158,0.1)'; // Modrý indikátor pro plánovaný úkol
+            }
+
+            cell.addEventListener('click', async ()=>{
+                if(!user){ flashLoginNeeded(); return; }
+                if(!scheduled) return; // Klikat lze jen na plánované dny
+                
+                const current = cell.dataset.state || 'none';
+                const next = nextState(current);
+                cell.dataset.state = next;
+                applyStateClass(cell, next);
+                await upsertTaskState(task.id, dayIndex, next);
+            });
+            
+            const label = document.createElement('div');
+            label.style.fontSize='10px';
+            label.style.fontWeight='600';
+            label.innerText = dayShortName(dayIndex);
+            cell.appendChild(label);
+            daysRow.appendChild(cell);
+        }
+        
+        taskItem.appendChild(daysRow);
+        tasksContainer.appendChild(taskItem);
+    });
+    
+    // Přidání formuláře pod úkoly
+    if(user) {
+        tasksContainer.appendChild(createTaskForm(section.id));
+    }
+}
+
+async function addTask(sectionId, name, days) {
+    if (!user) { flashLoginNeeded(); return; }
+    try {
+        await supabase.from("tasks").insert({ section_id: sectionId, name: name, days: days });
+    } catch (e) { console.error("addTask error", e); alert('Chyba při přidávání úkolu'); }
+}
+
+async function deleteTask(taskId) {
+    if (!user) { flashLoginNeeded(); return; }
+    try {
+        // Smazání úkolu automaticky smaže i task_states díky ON DELETE CASCADE v databázi
+        await supabase.from("tasks").delete().eq('id', taskId); 
+    } catch (e) { console.error("deleteTask error", e); alert('Chyba při mazání úkolu'); }
+}
+
+async function upsertTaskState(taskId, dayIndex, state){
+  if(state === 'none') return; // Neplánovaný stav "none" neukládáme
+  
+  const weekStartIso = toIsoDate(currentWeekStart);
+  try{
+    // upsert based on unique constraint (task_id, week_start, day_index)
+    const payload = {
+      task_id: taskId,
+      week_start: weekStartIso,
+      day_index: dayIndex,
+      state
+    };
+    const { error } = await supabase.from('task_states').upsert(payload, { onConflict: ['task_id','week_start','day_index'] });
+    if(error) console.error('upsertTaskState error', error);
+    // Lokálně aktualizovat taskStates
+    await loadTaskStatesForWeek(currentWeekStart);
+  }catch(e){ console.error(e); }
+}
+
+
+// ========== KOMENTÁŘE FUNKCE ==========
+
+async function loadComments(sectionId){
   const { data, error } = await supabase
     .from("comments")
     .select("*")
@@ -342,9 +756,135 @@ function renderSections(){
   return data || [];
 }
 
+/**
+ * Znovu načte a vykreslí komentáře pro daný úsek.
+ */
+async function refreshCommentsDisplay(sectionId, commentsBoxElement, btnCommentsElement) {
+  const comments = await loadComments(sectionId);
+  commentsBoxElement.innerHTML = "";
+  
+  if (comments.length === 0) {
+    const emptyMsg = document.createElement('div');
+    emptyMsg.textContent = 'Zatím zde nejsou žádné komentáře.';
+    emptyMsg.style.color = 'var(--muted)';
+    commentsBoxElement.appendChild(emptyMsg);
+  }
+
+  comments.forEach(c => {
+    const item = document.createElement("div");
+    item.className = "comment-item " + (c.is_complaint ? "complaint" : "");
+
+    const content = document.createElement("div");
+    content.className = "comment-content";
+
+    const author = document.createElement("div");
+    author.className = "comment-author";
+    author.textContent = c.author_email + " — " + new Date(c.created_at).toLocaleString();
+
+    const msg = document.createElement("div");
+    msg.className = "comment-msg";
+    msg.textContent = c.message;
+
+    content.appendChild(author);
+    content.appendChild(msg);
+    item.appendChild(content);
+
+    // Tlačítko pro smazání (jen pro přihlášeného uživatele)
+    if (user) {
+        const btnDelete = document.createElement("button");
+        btnDelete.className = 'small';
+        btnDelete.textContent = '✖';
+        btnDelete.style.background = '#d9534f';
+        btnDelete.style.marginLeft = '10px';
+        btnDelete.addEventListener('click', async () => {
+            if (confirm('Opravdu smazat tento komentář?')) {
+                // Smazat komentář a obnovit zobrazení
+                await deleteComment(c.id);
+                refreshCommentsDisplay(sectionId, commentsBoxElement, btnCommentsElement);
+            }
+        });
+        item.appendChild(btnDelete);
+    }
+    
+    commentsBoxElement.appendChild(item);
+  });
+
+  // Formulář pro nový komentář
+  if (user && commentsBoxElement.querySelector('.comment-form') === null) {
+    const form = document.createElement("div");
+    form.className = "comment-form";
+
+    const textarea = document.createElement("textarea");
+    textarea.placeholder = "Napiš komentář...";
+
+    const chk = document.createElement("input");
+    chk.type = "checkbox";
+    chk.id = `chk-complaint-${sectionId}`;
+    
+    const chkLabel = document.createElement("label");
+    chkLabel.className = 'small muted';
+    chkLabel.style.whiteSpace = 'nowrap';
+    chkLabel.style.display = 'flex';
+    chkLabel.style.alignItems = 'center';
+    chkLabel.style.gap = '4px';
+    chkLabel.appendChild(chk);
+    chkLabel.appendChild(document.createTextNode(' Stížnost'));
+
+    const btnSend = document.createElement("button");
+    btnSend.textContent = "Odeslat";
+    btnSend.style.alignSelf = 'flex-start';
+
+    btnSend.addEventListener("click", async () => {
+      const text = textarea.value.trim();
+      if (!text) return;
+
+      await supabase.from("comments").insert({
+        section_id: sectionId,
+        author_email: user.email,
+        message: text,
+        is_complaint: chk.checked
+      });
+
+      textarea.value = "";
+      chk.checked = false;
+
+      // Znovu načíst komentáře pro zobrazení nového
+      btnCommentsElement.click(); 
+      btnCommentsElement.click();
+
+  });
+    
+    form.appendChild(textarea);
+    form.appendChild(chkLabel);
+    form.appendChild(btnSend);
+    commentsBoxElement.appendChild(form);
+  }
+}
+
+
+async function deleteComment(commentId) {
+    if (!user) { flashLoginNeeded(); return; }
+    try {
+        const { error } = await supabase
+            .from('comments')
+            .delete()
+            .eq('id', commentId);
+        
+        if (error) {
+            console.error('deleteComment error', error);
+            alert('Chyba při mazání komentáře.');
+        }
+    } catch (e) {
+        console.error(e);
+        alert('Chyba při mazání komentáře.');
+    }
+}
+
+
 function renderSections(){
   const container = document.getElementById('calendarContainer');
   container.innerHTML='';
+  
   if(sections.length===0){
     const empty = document.createElement('div');
     empty.className='panel';
@@ -382,14 +922,14 @@ function renderSections(){
     btnComments.textContent = "💬 Komentáře";
     right.appendChild(btnComments);
 
-    // Pokud přihlášen → Smazat
+    // Pokud přihlášen → Smazat úsek
     if(user){
       const btnDel = document.createElement('button'); 
       btnDel.className='small'; 
       btnDel.style.background='#d9534f';
-      btnDel.textContent = 'Smazat';
+      btnDel.textContent = 'Smazat úsek';
       btnDel.addEventListener('click', async ()=>{
-        if(!confirm('Smazat úsek?')) return;
+        if(!confirm('Smazat úsek? Tím smažeš i všechna data, úkoly a komentáře s ním spojené!')) return;
         await deleteSection(sec.id);
       });
       right.appendChild(btnDel);
@@ -399,7 +939,7 @@ function renderSections(){
     header.appendChild(right);
     secWrap.appendChild(header);
 
-    // ========== DNY ==========
+    // ========== HLAVNÍ DNY (Sekce) ==========
     const daysRow = document.createElement('div'); 
     daysRow.className='days-row';
 
@@ -408,6 +948,7 @@ function renderSections(){
       cell.className='day-cell day-none';
 
       const scheduled = (sec.days || []).includes(dayIndex);
+      
       const stateObj = states.find(s => 
         s.section_id === sec.id && 
         Number(s.day_index) === dayIndex &&
@@ -420,9 +961,11 @@ function renderSections(){
       cell.dataset.sectionId = sec.id;
       cell.dataset.dayIndex = dayIndex;
       cell.dataset.state = state;
+      cell.title = scheduled ? 'Plánovaný den sekce' : 'Neplánovaný den sekce';
 
       cell.addEventListener('click', async ()=>{
         if(!user){ flashLoginNeeded(); return; }
+        if(!scheduled) return; // Hlavní sekce lze klikat jen na plánované dny
         const current = cell.dataset.state || 'none';
         const next = nextState(current);
         cell.dataset.state = next;
@@ -445,6 +988,12 @@ function renderSections(){
     }
 
     secWrap.appendChild(daysRow);
+    
+    // ========== ÚKOLY DETAIL ==========
+    const tasksContainer = document.createElement('div');
+    tasksContainer.className = "task-list-container";
+    renderTasksList(sec, tasksContainer);
+    secWrap.appendChild(tasksContainer);
 
     // ========== KOMENTÁŘE PANEL ==========
     const commentsBox = document.createElement('div');
@@ -453,137 +1002,27 @@ function renderSections(){
     secWrap.appendChild(commentsBox);
 
     btnComments.addEventListener("click", async ()=>{
-      commentsBox.style.display = 
-        commentsBox.style.display === "none" ? "block" : "none";
+      const isVisible = commentsBox.style.display === "block";
+      commentsBox.style.display = isVisible ? "none" : "block";
 
-      if(commentsBox.style.display === "block"){
-        const comments = await loadComments(sec.id);
-
-        commentsBox.innerHTML = "";
-
-        comments.forEach(c=>{
-          const item = document.createElement("div");
-          item.className = "comment-item " + (c.is_complaint ? "complaint" : "");
-
-          const author = document.createElement("div");
-          author.className = "comment-author";
-          author.textContent = c.author_email + " — " + new Date(c.created_at).toLocaleString();
-
-          const msg = document.createElement("div");
-          msg.className = "comment-msg";
-          msg.textContent = c.message;
-
-          item.appendChild(author);
-          item.appendChild(msg);
-          commentsBox.appendChild(item);
-        });
-
-        // Formulář pro nový komentář
-        if(user){
-          const form = document.createElement("div");
-          form.className = "comment-form";
-
-          const textarea = document.createElement("textarea");
-          textarea.placeholder = "Napiš komentář...";
-
-          const chk = document.createElement("input");
-          chk.type = "checkbox";
-          chk.title = "Stížnost";
-
-          const btnSend = document.createElement("button");
-          btnSend.textContent = "Odeslat";
-
-          btnSend.addEventListener("click", async ()=>{
-            const text = textarea.value.trim();
-            if(!text) return;
-
-            await supabase.from("comments").insert({
-              section_id: sec.id,
-              author_email: user.email,
-              message: text,
-              is_complaint: chk.checked
-            });
-
-            textarea.value = "";
-            chk.checked = false;
-
-            btnComments.click();
-            btnComments.click();});
-          form.appendChild(textarea);
-          form.appendChild(chk);
-          form.appendChild(btnSend);
-          commentsBox.appendChild(form);}}});
-    container.appendChild(secWrap);});}
-  sections.forEach(sec=>{
-    const secWrap = document.createElement('div'); secWrap.className='panel section-row';
-    const header = document.createElement('div'); header.className='section-header';
-    const left = document.createElement('div');
-    const title = document.createElement('div'); title.className='section-title'; title.innerText = sec.name;
-    const person = document.createElement('div'); person.className='section-person'; person.innerText = sec.person || '';
-    left.appendChild(title);
-    left.appendChild(person);
-    const right = document.createElement('div');
-    right.className='center';
-    // edit & delete buttons (only if logged in)
-    if(user){
-      const btnDel = document.createElement('button'); btnDel.className='small'; btnDel.style.background='#d9534f';
-      btnDel.textContent = 'Smazat';
-      btnDel.addEventListener('click', async ()=>{
-        if(!confirm('Smazat úsek?')) return;
-        await deleteSection(sec.id);});
-      right.appendChild(btnDel);}
-    header.appendChild(left);
-    header.appendChild(right);
-    secWrap.appendChild(header);
-
-    // days row
-    const daysRow = document.createElement('div'); daysRow.className='days-row';
-    for(let dayIndex=0; dayIndex<7; dayIndex++){
-      const cell = document.createElement('div'); cell.className='day-cell day-none';
-      // if section is scheduled this day, but not logged-in, show waiting by default
-      const scheduled = (sec.days || []).includes(dayIndex);
-
-      // find state for this section/day/this week
-      const stateObj = states.find(s => s.section_id === sec.id && Number(s.day_index) === dayIndex && s.week_start === toIsoDate(currentWeekStart));
-      const state = stateObj ? stateObj.state : (scheduled ? 'waiting' : 'none');
-
-      applyStateClass(cell, state);
-      cell.dataset.sectionId = sec.id;
-      cell.dataset.dayIndex = dayIndex;
-      cell.dataset.state = state;
-      cell.title = scheduled ? 'Plánovaný den' : 'Neplánovaný den';
-
-      // click handler: cycle states, only if logged in
-      cell.addEventListener('click', async ()=>{
-        if(!user){ flashLoginNeeded(); return; }
-        // only allow manipulation if section exists (just safety)
-        const current = cell.dataset.state || 'none';
-        const next = nextState(current);
-        cell.dataset.state = next;
-        applyStateClass(cell, next);
-        await upsertState(sec.id, dayIndex, next);});
-
-      // visually indicate scheduled days (border)
-      if(scheduled){
-        cell.style.boxShadow = 'inset 0 -4px 0 rgba(11,111,158,0.06)';}
-
-      // content: short label
-      const label = document.createElement('div');
-      label.style.fontSize='12px';
-      label.style.fontWeight='700';
-      label.style.padding='6px 4px';
-      label.innerText = dayShortName(dayIndex);
-      cell.appendChild(label);
-
-      daysRow.appendChild(cell);
-    }
-
-    secWrap.appendChild(daysRow);
+      if(!isVisible){
+        // Vykreslení a načtení komentářů
+        await refreshCommentsDisplay(sec.id, commentsBox, btnComments);
+      }
+    });
     container.appendChild(secWrap);
   });
 }
 
 // ---------- Helpers ----------
+function normalizeDays(days){
+    let result = days;
+    if(typeof result === 'string'){
+      try{ result = JSON.parse(result); }catch(e){ result = []; }
+    }
+    return Array.isArray(result) ? result.map(Number) : [];
+}
+
 function applyStateClass(el, state){
   el.classList.remove('day-none','day-waiting','day-done','day-bad');
   if(state==='waiting') el.classList.add('day-waiting');
@@ -600,9 +1039,10 @@ function nextState(current){
 }
 function dayShortName(i){ return ['Po','Út','St','Čt','Pá','So','Ne'][i]; }
 function flashLoginNeeded(){
-  const original = document.getElementById('authArea').style.boxShadow;
-  document.getElementById('authArea').style.boxShadow = '0 0 0 3px rgba(255,165,0,0.18)';
-  setTimeout(()=> document.getElementById('authArea').style.boxShadow = original, 800);
+  const authArea = document.getElementById('authArea');
+  const original = authArea.style.boxShadow;
+  authArea.style.boxShadow = '0 0 0 3px rgba(255,165,0,0.18)';
+  setTimeout(()=> authArea.style.boxShadow = original, 800);
 }
 function formatWeekLabel(mondayDate){
   const d = new Date(mondayDate);
@@ -628,13 +1068,15 @@ function toIsoDate(d){
 // ---------- Week navigation ----------
 async function changeWeek(delta){
   currentWeekStart.setDate(currentWeekStart.getDate() + delta*7);
+  currentWeekStart = getMonday(currentWeekStart);
   await loadStatesForWeek(currentWeekStart);
+  await loadTaskStatesForWeek(currentWeekStart);
   render();
 }
 
 // ---------- Add / Delete sections ----------
 async function addSectionHandler(){
-  if(!user){ alert('Musíš se přihlásit, aby ses mohl přidávat úseky'); return; }
+  if(!user){ alert('Musíš se přihlásit, abys mohl přidávat úseky'); return; }
   const name = document.getElementById('sectionName').value.trim();
   const person = document.getElementById('sectionPerson').value.trim();
   if(!name || !person){ alert('Vyplň název úseku i osobu'); return; }
@@ -658,8 +1100,7 @@ async function addSectionHandler(){
 async function deleteSection(sectionId){
   try{
     await supabase.from('sections').delete().eq('id', sectionId);
-    // also delete related states
-    await supabase.from('states').delete().match({ section_id: sectionId });
+    // Smazání souvisejících záznamů proběhne automaticky díky ON DELETE CASCADE
     await loadAll();
   }catch(e){ console.error(e); }
 }
