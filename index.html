@@ -1,217 +1,481 @@
 <!DOCTYPE html>
 <html lang="cs">
 <head>
-<meta charset="UTF-8">
-<title>DUSSMANN - ŠKODA DOOSAN</title>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>DUSSMANN - ŠKODA DOOSAN — CLEANDER</title>
+
+<!-- Supabase client (ESM) -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm" type="module"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<!-- html2canvas + jsPDF -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
 <style>
-body { font-family: Inter, system-ui, Arial, sans-serif; background:#f4f7fb; margin:0; padding:22px; color:#14303a; }
-.container { max-width:1200px; margin:0 auto; }
-h1 { text-align:center; color:#0f3550; margin-bottom:18px; font-weight:600; }
-.controls { display:flex; gap:10px; flex-wrap:wrap; margin-bottom:12px; align-items:center; justify-content:center; }
-input[type=text], input[type=email], input[type=password] { padding:8px 10px; border-radius:8px; border:1px solid #d6e6ef; font-size:14px; width:220px; outline:none; }
-button { padding:8px 10px; border-radius:8px; border:none; cursor:pointer; background:#0b5f8f; color:white; font-size:13px; }
-.week-header { display:flex; gap:6px; margin-bottom:16px; }
-.week-day-box { flex:1; text-align:center; }
-.week-day { padding:10px 6px; background:#e9f4ff; border-radius:8px; font-weight:600; color:#08345a; box-shadow: 0 1px 0 rgba(0,0,0,0.03); }
-.section { background:#ffffff; border-radius:14px; padding:14px; margin-bottom:14px; box-shadow:0 6px 18px rgba(7,18,29,0.05); border:1px solid rgba(3,36,60,0.03); }
-.section-header { display:flex; gap:12px; justify-content:space-between; align-items:center; }
-.section-left { display:flex; gap:12px; align-items:center; cursor:pointer; }
-.section-title { font-weight:700; font-size:17px; color:#0b4270; }
-.section-person { font-style:italic; color:#2f6a8b; font-size:13px; }
-.day-cell { flex:1; text-align:center; padding:6px 4px; border-radius:6px; font-size:12px; color:white; cursor:pointer; user-select:none; transition:all 0.15s ease; min-width:30px; }
-.day-waiting { background:#ffd86b; color:#3a2b00; }
-.day-done { background:#5ce1a2; color:#064022; }
-.day-bad { background:#ff8a85; color:#5b1516; }
-.day-none { background:#eef3f6; color:#7a8a93; cursor:default; opacity:0.9; box-shadow: inset 0 0 0 1px rgba(0,0,0,0.02); }
+  :root{
+    --bg:#f4f7fb;
+    --card:#fff;
+    --accent:#0b5f8f;
+    --muted:#7a8a93;
+    --shadow: 0 8px 24px rgba(7,18,29,0.06);
+    --radius:14px;
+  }
+  *{box-sizing:border-box}
+  body{font-family:Inter,system-ui,Arial,sans-serif;background:var(--bg);margin:0;color:#14303a;padding:20px;}
+  .container{max-width:1200px;margin:0 auto}
+  header{display:flex;gap:12px;align-items:center;justify-content:space-between;margin-bottom:18px}
+  h1{font-size:20px;margin:0;color:#0f3550}
+  .controls{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+  input[type=text], input[type=email], input[type=password], select{padding:8px 10px;border-radius:10px;border:1px solid #d6e6ef;font-size:14px;outline:none}
+  button{padding:8px 10px;border-radius:10px;border:none;cursor:pointer;background:var(--accent);color:white;font-size:13px}
+  .small{padding:6px 8px;font-size:13px}
+  .panel{background:var(--card);border-radius:var(--radius);padding:12px;box-shadow:var(--shadow);margin-bottom:14px;border:1px solid rgba(3,36,60,0.03)}
+  .week-controls{display:flex;gap:8px;align-items:center}
+  .week-header{display:flex;gap:6px;margin-bottom:12px}
+  .week-day-box{flex:1;text-align:center}
+  .week-day{padding:10px 6px;background:#e9f4ff;border-radius:10px;font-weight:600;color:#08345a;box-shadow:0 1px 0 rgba(0,0,0,0.03)}
+  .grid{display:grid;grid-template-columns:1fr;gap:12px}
+  @media(min-width:880px){.grid{grid-template-columns:1fr 1fr}}
+  .section-row{display:flex;flex-direction:column;background:#fff;border-radius:12px;padding:10px;gap:10px;border:1px solid rgba(3,36,60,0.03)}
+  .section-header{display:flex;align-items:center;justify-content:space-between;gap:8px}
+  .section-title{font-weight:700;color:#0b4270}
+  .section-person{font-style:italic;color:#2f6a8b;font-size:13px}
+  .days-row{display:flex;gap:6px}
+  .day-cell{flex:1;text-align:center;padding:8px 6px;border-radius:8px;font-size:12px;color:white;cursor:pointer;user-select:none;min-width:36px}
+  .day-none{background:#eef3f6;color:var(--muted)}
+  .day-waiting{background:#ffd86b;color:#3a2b00}
+  .day-done{background:#5ce1a2;color:#064022}
+  .day-bad{background:#ff8a85;color:#5b1516}
+  .muted{color:var(--muted)}
+  .center{display:flex;gap:8px;align-items:center}
+  .form-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  label.small{font-size:13px;color:var(--muted)}
+  .badge{background:#eef6fb;padding:6px 8px;border-radius:8px;color:#0b4270;font-weight:600}
 </style>
 </head>
 <body>
-<div class="container">
-  <h1>DUSSMANN - ŠKODA DOOSAN</h1>
-  <div class="controls">
-    <input type="text" id="sectionName" placeholder="Název úseku">
-    <input type="text" id="sectionPerson" placeholder="Osoba">
+  <div class="container">
+    <header>
+      <div style="display:flex;gap:12px;align-items:center">
+        <h1>DUSSMANN — ŠKODA DOOSAN</h1>
+        <div class="badge">CLEANDER</div>
+      </div>
 
-    <!-- Přihlášení -->
-    <input type="email" id="email" placeholder="Email">
-    <input type="password" id="password" placeholder="Heslo">
-    <button type="button" id="btnSignIn">Přihlásit</button>
-    <button type="button" id="btnSignOut">Odhlásit</button>
+      <div class="controls">
+        <div id="authArea" class="center">
+          <input type="email" id="email" placeholder="Email" />
+          <input type="password" id="password" placeholder="Heslo" />
+          <button id="btnSignIn" class="small">Přihlásit</button>
+          <button id="btnSignOut" class="small" style="display:none;background:#666">Odhlásit</button>
+        </div>
+        <button id="btnExport" class="small">Export PDF</button>
+      </div>
+    </header>
 
-    <button type="button" onclick="exportPDF()">Export PDF</button>
+    <section class="panel">
+      <div class="week-controls" style="justify-content:space-between;align-items:center">
+        <div style="display:flex;gap:8px;align-items:center">
+          <button id="prevWeek" class="small">« Týden zpět</button>
+          <button id="nextWeek" class="small">Týden vpřed »</button>
+          <div id="currentWeekLabel" style="margin-left:8px;font-weight:600;color:#0b4270"></div>
+        </div>
+
+        <div style="display:flex;gap:8px;align-items:center">
+          <div id="userInfo" class="muted" style="font-size:13px"></div>
+        </div>
+      </div>
+
+      <div id="weekHeader" class="week-header" aria-hidden="true"></div>
+
+      <div style="margin-top:10px" class="form-row">
+        <input type="text" id="sectionName" placeholder="Název úseku" />
+        <input type="text" id="sectionPerson" placeholder="Osoba" />
+        <label class="small">Dny:</label>
+        <div id="dayCheckboxes" style="display:flex;gap:6px;align-items:center">
+          <label><input type="checkbox" value="0" /> Po</label>
+          <label><input type="checkbox" value="1" /> Út</label>
+          <label><input type="checkbox" value="2" /> St</label>
+          <label><input type="checkbox" value="3" /> Čt</label>
+          <label><input type="checkbox" value="4" /> Pá</label>
+          <label><input type="checkbox" value="5" /> So</label>
+          <label><input type="checkbox" value="6" /> Ne</label>
+        </div>
+        <button id="btnAddSection" class="small">Přidat úsek</button>
+      </div>
+    </section>
+
+    <main id="calendarContainer" class="grid"></main>
   </div>
-  <div id="weekHeader" class="week-header"></div>
-  <div id="calendarContainer"></div>
-</div>
 
 <script type="module">
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
 
-const supabaseUrl = 'https://ndkovjnkfybtxspzdbpk.supabase.co';
-const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5ka292am5rZnlidHhzcHpkYnBrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjIwMjAzOTcsImV4cCI6MjA3NzU5NjM5N30.SUds0wMRrEJaYy5kuyud0ggQrKh6ZodSfmDwDybH4MI';
-const supabase = createClient(supabaseUrl, supabaseKey);
+// ---------- Supabase config (ponech tvůj key/url) ----------
+const SUPABASE_URL = 'https://ndkovjnkfybtxspzdbpk.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5ka292am5rZnlidHhzcHpkYnBrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjIwMjAzOTcsImV4cCI6MjA3NzU5NjM5N30.SUds0wMRrEJaYy5kuyud0ggQrKh6ZodSfmDwDybH4MI';
+const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
+// povolení (pořád lokálně - pole emailů)
+const allowedUsers = [
+  "maslovykoblih@gmail.com",
+  "kralmastah@gmail.com"
+];
+
+// ---------- Globální proměnné ----------
 let user = null;
-let sections = [];
-const allowedUsers = ["maslovykoblih@gmail.com,kralmastah@gmail.com"]; // <-- sem dej povolené emaily
+let sections = [];    // sections loaded from DB
+let states = [];      // states for current week
+let currentWeekStart = getMonday(new Date()); // Date object pondělí
 
-// ----- Inicializace session -----
-async function initAuth() {
-  const { data: { session }, error } = await supabase.auth.getSession();
-  if(error){ console.error("Chyba načtení session:", error); return; }
+// ---------- DOM ready ----------
+document.addEventListener('DOMContentLoaded', () => {
+  // bind UI
+  document.getElementById('btnSignIn').addEventListener('click', signIn);
+  document.getElementById('btnSignOut').addEventListener('click', signOut);
+  document.getElementById('btnAddSection').addEventListener('click', addSectionHandler);
+  document.getElementById('prevWeek').addEventListener('click', ()=>{ changeWeek(-1); });
+  document.getElementById('nextWeek').addEventListener('click', ()=>{ changeWeek(1); });
+  document.getElementById('btnExport').addEventListener('click', exportPDF);
 
-  user = session?.user || null;
-  if(user && !allowedUsers.includes(user.email)){
-    alert("Tento účet nemá oprávnění!");
-    await supabase.auth.signOut();
-    user = null;
-  }
-  updateAuthUI();
-  loadSections();
+  // init auth/session
+  initAuth();
+});
+
+// ---------- Auth & session ----------
+async function initAuth(){
+  try{
+    const { data: { session }, error } = await supabase.auth.getSession();
+    if(error) console.error('initAuth error', error);
+    user = session?.user || null;
+    updateAuthUI();
+    // Listen to auth changes
+    supabase.auth.onAuthStateChange((event, session) => {
+      user = session?.user || null;
+      if(user && !allowedUsers.includes(user.email)){
+        alert('Tento účet nemá oprávnění!');
+        supabase.auth.signOut();
+        user = null;
+      }
+      updateAuthUI();
+      loadAll();
+    });
+    // initial load
+    loadAll();
+  }catch(e){ console.error(e); }
 }
 
-// ----- Auth -----
-async function signIn() {
-  const email = document.getElementById("email").value.trim();
-  const password = document.getElementById("password").value.trim();
-  if(!email || !password){ alert("Vyplň email i heslo"); return; }
+function updateAuthUI(){
+  const emailInput = document.getElementById('email');
+  const passwordInput = document.getElementById('password');
+  const btnSignIn = document.getElementById('btnSignIn');
+  const btnSignOut = document.getElementById('btnSignOut');
+  const userInfo = document.getElementById('userInfo');
 
-  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-  if(error){ alert("Chyba při přihlášení: "+error.message); return; }
-
-  if(!allowedUsers.includes(email)){
-    alert("Tento účet nemá oprávnění!");
-    await supabase.auth.signOut();
-    return;
+  if(user){
+    emailInput.style.display = 'none';
+    passwordInput.style.display = 'none';
+    btnSignIn.style.display = 'none';
+    btnSignOut.style.display = 'inline-block';
+    userInfo.textContent = `Přihlášen: ${user.email}`;
+  } else {
+    emailInput.style.display = 'inline-block';
+    passwordInput.style.display = 'inline-block';
+    btnSignIn.style.display = 'inline-block';
+    btnSignOut.style.display = 'none';
+    userInfo.textContent = '';
   }
-
-  user = data.user;
-  updateAuthUI();
-  loadSections();
 }
 
-async function signOut() {
+async function signIn(){
+  const email = document.getElementById('email').value.trim();
+  const password = document.getElementById('password').value.trim();
+  if(!email || !password){ alert('Vyplň email i heslo'); return; }
+  try{
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    if(error){ alert('Chyba při přihlášení: '+error.message); return; }
+    if(!allowedUsers.includes(email)){
+      alert('Tento účet nemá oprávnění!');
+      await supabase.auth.signOut();
+      return;
+    }
+    user = data.user;
+    updateAuthUI();
+    await loadAll();
+  }catch(e){ console.error(e); alert('Chyba při přihlášení'); }
+}
+
+async function signOut(){
   await supabase.auth.signOut();
   user = null;
   updateAuthUI();
+  await loadAll();
+}
+
+// ---------- Load sections + states ----------
+async function loadAll(){
+  await loadSections();
+  await loadStatesForWeek(currentWeekStart);
   render();
 }
 
-// --- Sleduj změny session ---
-supabase.auth.onAuthStateChange((event, session)=>{
-  user = session?.user || null;
-  if(user && !allowedUsers.includes(user.email)){
-    alert("Tento účet nemá oprávnění!");
-    supabase.auth.signOut();
-    user = null;
-  }
-  updateAuthUI();
-  loadSections();
-});
-
-// ----- Skrytí/přihlášení UI -----
-function updateAuthUI(){
-  const emailInput = document.getElementById("email");
-  const passwordInput = document.getElementById("password");
-  const btnSignIn = document.getElementById("btnSignIn");
-  const btnSignOut = document.getElementById("btnSignOut");
-
-  if(user){
-    emailInput.style.display = "none";
-    passwordInput.style.display = "none";
-    btnSignIn.style.display = "none";
-    btnSignOut.style.display = "inline-block";
-  } else {
-    emailInput.style.display = "inline-block";
-    passwordInput.style.display = "inline-block";
-    btnSignIn.style.display = "inline-block";
-    btnSignOut.style.display = "none";
-  }
-}
-
-// ----- Load sections -----
 async function loadSections(){
-  if(!user) return;
-  const { data, error } = await supabase.from('sections').select('*, tasks(*)').order('id');
-  if(error){ console.error(error); return; }
-  sections = data.map(s=>{ s.tasks=s.tasks||[]; return s; });
-  render();
+  try{
+    const { data, error } = await supabase
+      .from('sections')
+      .select('*')
+      .order('id', {ascending:true});
+    if(error){ console.error('loadSections', error); sections = []; return; }
+    sections = (data || []).map(s => {
+      // normalize days as array of ints
+      let days = s.days;
+      if(typeof days === 'string'){
+        try{ days = JSON.parse(days); }catch(e){ days = []; }
+      }
+      return { ...s, days: Array.isArray(days) ? days.map(Number) : [] };
+    });
+  }catch(e){ console.error(e); sections = []; }
 }
 
-// ----- Add section -----
-document.getElementById('btnAddSection').onclick = async ()=>{
-  if(!user){ alert("Musíš se přihlásit"); return; }
-  const name = document.getElementById("sectionName").value.trim();
-  const person = document.getElementById("sectionPerson").value.trim();
-  if(!name||!person){ alert("Vyplň úsek a osobu!"); return; }
-  const { data, error } = await supabase.from('sections').insert([{ name, person }]).select();
-  if(error){ console.error(error); return; }
-  data[0].tasks=[];
-  sections.push(data[0]);
-  document.getElementById("sectionName").value="";
-  document.getElementById("sectionPerson").value="";
-  render();
-};
+async function loadStatesForWeek(weekStartDate){
+  try{
+    const iso = toIsoDate(weekStartDate);
+    const { data, error } = await supabase
+      .from('states')
+      .select('*')
+      .eq('week_start', iso);
+    if(error){ console.error('loadStatesForWeek', error); states = []; return; }
+    states = data || [];
+  }catch(e){ console.error(e); states = []; }
+}
 
-// ----- Render -----
-const days = ["Po","Út","St","Čt","Pá","So","Ne"];
+// ---------- Render ----------
+function render(){
+  renderWeekHeader();
+  renderSections();
+  document.getElementById('currentWeekLabel').textContent = formatWeekLabel(currentWeekStart);
+}
+
 function renderWeekHeader(){
-  const header = document.getElementById("weekHeader");
-  header.innerHTML="";
-  const today = new Date();
-  const dayOfWeek = today.getDay()||7;
-  const monday = new Date(today); monday.setDate(today.getDate()-dayOfWeek+1);
+  const header = document.getElementById('weekHeader');
+  header.innerHTML = '';
+  const daysCZ = ["Po","Út","St","Čt","Pá","So","Ne"];
   for(let i=0;i<7;i++){
-    const d = new Date(monday); d.setDate(monday.getDate()+i);
-    const box = document.createElement("div"); box.className="week-day-box";
-    const dayDiv = document.createElement("div"); dayDiv.className="week-day";
+    const d = new Date(currentWeekStart);
+    d.setDate(d.getDate() + i);
+    const box = document.createElement('div'); box.className='week-day-box';
+    const dayDiv = document.createElement('div'); dayDiv.className='week-day';
     if(new Date().toDateString()===d.toDateString()) dayDiv.style.boxShadow="inset 0 -4px 0 rgba(11,111,158,0.12)";
-    dayDiv.innerText=`${days[i]} ${d.getDate()}.${d.getMonth()+1}`;
+    dayDiv.innerText = `${daysCZ[i]} ${d.getDate()}.${d.getMonth()+1}`;
     box.appendChild(dayDiv);
     header.appendChild(box);
   }
 }
-function render(){
-  renderWeekHeader();
-  const container = document.getElementById("calendarContainer");
-  container.innerHTML="";
+
+function renderSections(){
+  const container = document.getElementById('calendarContainer');
+  container.innerHTML='';
+  if(sections.length===0){
+    const empty = document.createElement('div');
+    empty.className='panel';
+    empty.textContent = 'Žádné úseky. Přidej úsek nahoře.';
+    container.appendChild(empty);
+    return;
+  }
+
   sections.forEach(sec=>{
-    const secDiv = document.createElement("div"); secDiv.className="section";
-    const header = document.createElement("div"); header.className="section-header";
-    const left = document.createElement("div"); left.className="section-left";
-    const title = document.createElement("div"); title.className="section-title"; title.innerText=sec.name;
-    const person = document.createElement("div"); person.className="section-person"; person.innerText=sec.person;
-    left.appendChild(title); left.appendChild(person);
+    const secWrap = document.createElement('div'); secWrap.className='panel section-row';
+    const header = document.createElement('div'); header.className='section-header';
+    const left = document.createElement('div');
+    const title = document.createElement('div'); title.className='section-title'; title.innerText = sec.name;
+    const person = document.createElement('div'); person.className='section-person'; person.innerText = sec.person || '';
+    left.appendChild(title);
+    left.appendChild(person);
+
+    const right = document.createElement('div');
+    right.className='center';
+    // edit & delete buttons (only if logged in)
+    if(user){
+      const btnDel = document.createElement('button'); btnDel.className='small'; btnDel.style.background='#d9534f';
+      btnDel.textContent = 'Smazat';
+      btnDel.addEventListener('click', async ()=>{
+        if(!confirm('Smazat úsek?')) return;
+        await deleteSection(sec.id);
+      });
+      right.appendChild(btnDel);
+    }
+
     header.appendChild(left);
-    secDiv.appendChild(header);
-    container.appendChild(secDiv);
+    header.appendChild(right);
+
+    secWrap.appendChild(header);
+
+    // days row
+    const daysRow = document.createElement('div'); daysRow.className='days-row';
+    for(let dayIndex=0; dayIndex<7; dayIndex++){
+      const cell = document.createElement('div'); cell.className='day-cell day-none';
+      // if section is scheduled this day, but not logged-in, show waiting by default
+      const scheduled = (sec.days || []).includes(dayIndex);
+
+      // find state for this section/day/this week
+      const stateObj = states.find(s => s.section_id === sec.id && Number(s.day_index) === dayIndex && s.week_start === toIsoDate(currentWeekStart));
+      const state = stateObj ? stateObj.state : (scheduled ? 'waiting' : 'none');
+
+      applyStateClass(cell, state);
+      cell.dataset.sectionId = sec.id;
+      cell.dataset.dayIndex = dayIndex;
+      cell.dataset.state = state;
+      cell.title = scheduled ? 'Plánovaný den' : 'Neplánovaný den';
+
+      // click handler: cycle states, only if logged in
+      cell.addEventListener('click', async ()=>{
+        if(!user){ flashLoginNeeded(); return; }
+        // only allow manipulation if section exists (just safety)
+        const current = cell.dataset.state || 'none';
+        const next = nextState(current);
+        cell.dataset.state = next;
+        applyStateClass(cell, next);
+        await upsertState(sec.id, dayIndex, next);
+      });
+
+      // visually indicate scheduled days (border)
+      if(scheduled){
+        cell.style.boxShadow = 'inset 0 -4px 0 rgba(11,111,158,0.06)';
+      }
+
+      // content: short label
+      const label = document.createElement('div');
+      label.style.fontSize='12px';
+      label.style.fontWeight='700';
+      label.style.padding='6px 4px';
+      label.innerText = dayShortName(dayIndex);
+      cell.appendChild(label);
+
+      daysRow.appendChild(cell);
+    }
+
+    secWrap.appendChild(daysRow);
+    container.appendChild(secWrap);
   });
 }
 
-// ----- Export PDF -----
-window.exportPDF = function(){
-  html2canvas(document.getElementById("calendarContainer")).then(canvas=>{
-    const imgData = canvas.toDataURL("image/png");
-    const pdf = new jspdf.jsPDF("p","pt","a4");
+// ---------- Helpers ----------
+function applyStateClass(el, state){
+  el.classList.remove('day-none','day-waiting','day-done','day-bad');
+  if(state==='waiting') el.classList.add('day-waiting');
+  else if(state==='done') el.classList.add('day-done');
+  else if(state==='bad') el.classList.add('day-bad');
+  else el.classList.add('day-none');
+}
+
+function nextState(current){
+  if(current === 'none') return 'waiting';
+  if(current === 'waiting') return 'done';
+  if(current === 'done') return 'bad';
+  return 'none';
+}
+function dayShortName(i){ return ['Po','Út','St','Čt','Pá','So','Ne'][i]; }
+function flashLoginNeeded(){
+  const original = document.getElementById('authArea').style.boxShadow;
+  document.getElementById('authArea').style.boxShadow = '0 0 0 3px rgba(255,165,0,0.18)';
+  setTimeout(()=> document.getElementById('authArea').style.boxShadow = original, 800);
+}
+function formatWeekLabel(mondayDate){
+  const d = new Date(mondayDate);
+  const monday = `${d.getDate()}.${d.getMonth()+1}.${d.getFullYear()}`;
+  d.setDate(d.getDate()+6);
+  const sunday = `${d.getDate()}.${d.getMonth()+1}.${d.getFullYear()}`;
+  return `${monday} — ${sunday}`;
+}
+function getMonday(date){
+  const d = new Date(date);
+  const day = d.getDay() || 7;
+  if(day !== 1) d.setDate(d.getDate() - day + 1);
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+}
+function toIsoDate(d){
+  const dt = new Date(d);
+  const y = dt.getFullYear();
+  const m = String(dt.getMonth()+1).padStart(2,'0');
+  const day = String(dt.getDate()).padStart(2,'0');
+  return `${y}-${m}-${day}`;
+}
+
+// ---------- Week navigation ----------
+async function changeWeek(delta){
+  currentWeekStart.setDate(currentWeekStart.getDate() + delta*7);
+  await loadStatesForWeek(currentWeekStart);
+  render();
+}
+
+// ---------- Add / Delete sections ----------
+async function addSectionHandler(){
+  if(!user){ alert('Musíš se přihlásit, aby ses mohl přidávat úseky'); return; }
+  const name = document.getElementById('sectionName').value.trim();
+  const person = document.getElementById('sectionPerson').value.trim();
+  if(!name || !person){ alert('Vyplň název úseku i osobu'); return; }
+  // collect checked days
+  const checkboxes = Array.from(document.querySelectorAll('#dayCheckboxes input[type=checkbox]'));
+  const days = checkboxes.filter(cb => cb.checked).map(cb => Number(cb.value));
+  try{
+    // insert into DB (store days as array)
+    const { data, error } = await supabase
+      .from('sections')
+      .insert([{ name, person, days }])
+      .select();
+    if(error){ console.error('addSection error', error); alert('Chyba při přidávání'); return; }
+    document.getElementById('sectionName').value='';
+    document.getElementById('sectionPerson').value='';
+    checkboxes.forEach(cb => cb.checked=false);
+    await loadAll();
+  }catch(e){ console.error(e); alert('Chyba při přidání úseku'); }
+}
+
+async function deleteSection(sectionId){
+  try{
+    await supabase.from('sections').delete().eq('id', sectionId);
+    // also delete related states
+    await supabase.from('states').delete().match({ section_id: sectionId });
+    await loadAll();
+  }catch(e){ console.error(e); }
+}
+
+// ---------- Upsert state for a specific section/day/week ----------
+async function upsertState(sectionId, dayIndex, state){
+  // If state is 'none' and exists in DB => delete. Else upsert.
+  const weekStartIso = toIsoDate(currentWeekStart);
+  try{
+    if(state === 'none'){
+      await supabase.from('states').delete()
+        .match({ section_id: sectionId, week_start: weekStartIso, day_index: dayIndex });
+    } else {
+      // upsert based on unique constraint (section_id, week_start, day_index)
+      const payload = {
+        section_id: sectionId,
+        week_start: weekStartIso,
+        day_index: dayIndex,
+        state
+      };
+      const { error } = await supabase.from('states').upsert(payload, { onConflict: ['section_id','week_start','day_index'] });
+      if(error) console.error('upsertState error', error);
+    }
+    // refresh local states
+    await loadStatesForWeek(currentWeekStart);
+  }catch(e){ console.error(e); }
+}
+
+// ---------- Export PDF (celá stránka) ----------
+function exportPDF(){
+  const wrapper = document.body; // export whole page
+  html2canvas(wrapper, { scale: 2 }).then(canvas=>{
+    const imgData = canvas.toDataURL('image/png');
+    const pdf = new jspdf.jsPDF('p','pt','a4');
     const imgProps = pdf.getImageProperties(imgData);
     const pdfWidth = pdf.internal.pageSize.getWidth();
-    const pdfHeight = (imgProps.height*pdfWidth)/imgProps.width;
-    pdf.addImage(imgData,'PNG',0,0,pdfWidth,pdfHeight);
-    pdf.save("uklidovy_kalendar.pdf");
-  });
+    const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+    pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+    pdf.save('uklidovy_kalendar.pdf');
+  }).catch(e => console.error('exportPDF error', e));
 }
-
-// ----- Inicializace auth -----
-initAuth();
-
-document.getElementById('btnSignIn').onclick = signIn;
-document.getElementById('btnSignOut').onclick = signOut;
-
 </script>
 </body>
 </html>
-
-
