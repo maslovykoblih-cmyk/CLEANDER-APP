@@ -50,7 +50,67 @@
   .center{display:flex;gap:8px;align-items:center}
   .form-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
   label.small{font-size:13px;color:var(--muted)}
-  .badge{background:#eef6fb;padding:6px 8px;border-radius:8px;color:#0b4270;font-weight:600}
+ .comment-toggle {
+  background:#0b5f8f;
+  color:white;
+  padding:4px 8px;
+  font-size:12px;
+  border-radius:8px;
+  cursor:pointer;
+}
+
+.comment-box {
+  margin-top:10px;
+  background:#f7fbff;
+  border-radius:10px;
+  padding:10px;
+  display:none;
+  border:1px solid #cfe4ff;
+}
+
+.comment-item {
+  background:white;
+  border-radius:8px;
+  padding:8px;
+  margin-bottom:6px;
+  border-left:4px solid #0b5f8f;
+}
+
+.comment-item.complaint {
+  border-left:4px solid #ff5757;
+  background:#ffeaea;
+}
+
+.comment-author {
+  font-size:12px;
+  color:#555;
+}
+
+.comment-msg {
+  margin-top:4px;
+  font-size:14px;
+}
+
+.comment-form {
+  display:flex;
+  gap:6px;
+  margin-top:8px;
+}
+
+.comment-form textarea {
+  flex:1;
+  border-radius:8px;
+  padding:6px;
+  font-size:14px;
+  border:1px solid #c4d5e5;
+}
+
+.comment-form button {
+  background:#0b5f8f;
+  color:white;
+}
+ 
+ .badge{background:#eef6fb;padding:6px 8px;border-radius:8px;color:#0b4270;font-weight:600}
 </style>
 </head>
 <body>
@@ -272,6 +332,17 @@ function renderWeekHeader(){
 }
 
 function renderSections(){
+  async function loadComments(sectionId){
+  const { data, error } = await supabase
+    .from("comments")
+    .select("*")
+    .eq("section_id", sectionId)
+    .order("created_at", { ascending: true });
+
+  return data || [];
+}
+
+function renderSections(){
   const container = document.getElementById('calendarContainer');
   container.innerHTML='';
   if(sections.length===0){
@@ -283,19 +354,39 @@ function renderSections(){
   }
 
   sections.forEach(sec=>{
-    const secWrap = document.createElement('div'); secWrap.className='panel section-row';
-    const header = document.createElement('div'); header.className='section-header';
+    const secWrap = document.createElement('div'); 
+    secWrap.className='panel section-row';
+
+    // ========== HLAVICKA ==========
+    const header = document.createElement('div'); 
+    header.className='section-header';
+
     const left = document.createElement('div');
-    const title = document.createElement('div'); title.className='section-title'; title.innerText = sec.name;
-    const person = document.createElement('div'); person.className='section-person'; person.innerText = sec.person || '';
+    const title = document.createElement('div'); 
+    title.className='section-title'; 
+    title.innerText = sec.name;
+
+    const person = document.createElement('div'); 
+    person.className='section-person'; 
+    person.innerText = sec.person || '';
+
     left.appendChild(title);
     left.appendChild(person);
 
     const right = document.createElement('div');
     right.className='center';
-    // edit & delete buttons (only if logged in)
+
+    // BTN KOMENTÁŘE
+    const btnComments = document.createElement('button');
+    btnComments.className = 'small comment-toggle';
+    btnComments.textContent = "💬 Komentáře";
+    right.appendChild(btnComments);
+
+    // Pokud přihlášen → Smazat
     if(user){
-      const btnDel = document.createElement('button'); btnDel.className='small'; btnDel.style.background='#d9534f';
+      const btnDel = document.createElement('button'); 
+      btnDel.className='small'; 
+      btnDel.style.background='#d9534f';
       btnDel.textContent = 'Smazat';
       btnDel.addEventListener('click', async ()=>{
         if(!confirm('Smazat úsek?')) return;
@@ -306,7 +397,143 @@ function renderSections(){
 
     header.appendChild(left);
     header.appendChild(right);
+    secWrap.appendChild(header);
 
+    // ========== DNY ==========
+    const daysRow = document.createElement('div'); 
+    daysRow.className='days-row';
+
+    for(let dayIndex=0; dayIndex<7; dayIndex++){
+      const cell = document.createElement('div'); 
+      cell.className='day-cell day-none';
+
+      const scheduled = (sec.days || []).includes(dayIndex);
+      const stateObj = states.find(s => 
+        s.section_id === sec.id && 
+        Number(s.day_index) === dayIndex &&
+        s.week_start === toIsoDate(currentWeekStart)
+      );
+
+      const state = stateObj ? stateObj.state : (scheduled ? 'waiting' : 'none');
+
+      applyStateClass(cell, state);
+      cell.dataset.sectionId = sec.id;
+      cell.dataset.dayIndex = dayIndex;
+      cell.dataset.state = state;
+
+      cell.addEventListener('click', async ()=>{
+        if(!user){ flashLoginNeeded(); return; }
+        const current = cell.dataset.state || 'none';
+        const next = nextState(current);
+        cell.dataset.state = next;
+        applyStateClass(cell, next);
+        await upsertState(sec.id, dayIndex, next);
+      });
+
+      if(scheduled){
+        cell.style.boxShadow = 'inset 0 -4px 0 rgba(11,111,158,0.06)';
+      }
+
+      const label = document.createElement('div');
+      label.style.fontSize='12px';
+      label.style.fontWeight='700';
+      label.style.padding='6px 4px';
+      label.innerText = dayShortName(dayIndex);
+
+      cell.appendChild(label);
+      daysRow.appendChild(cell);
+    }
+
+    secWrap.appendChild(daysRow);
+
+    // ========== KOMENTÁŘE PANEL ==========
+    const commentsBox = document.createElement('div');
+    commentsBox.className = "comment-box";
+    commentsBox.innerHTML = "<div>Načítám komentáře...</div>";
+    secWrap.appendChild(commentsBox);
+
+    btnComments.addEventListener("click", async ()=>{
+      commentsBox.style.display = 
+        commentsBox.style.display === "none" ? "block" : "none";
+
+      if(commentsBox.style.display === "block"){
+        const comments = await loadComments(sec.id);
+
+        commentsBox.innerHTML = "";
+
+        comments.forEach(c=>{
+          const item = document.createElement("div");
+          item.className = "comment-item " + (c.is_complaint ? "complaint" : "");
+
+          const author = document.createElement("div");
+          author.className = "comment-author";
+          author.textContent = c.author_email + " — " + new Date(c.created_at).toLocaleString();
+
+          const msg = document.createElement("div");
+          msg.className = "comment-msg";
+          msg.textContent = c.message;
+
+          item.appendChild(author);
+          item.appendChild(msg);
+          commentsBox.appendChild(item);
+        });
+
+        // Formulář pro nový komentář
+        if(user){
+          const form = document.createElement("div");
+          form.className = "comment-form";
+
+          const textarea = document.createElement("textarea");
+          textarea.placeholder = "Napiš komentář...";
+
+          const chk = document.createElement("input");
+          chk.type = "checkbox";
+          chk.title = "Stížnost";
+
+          const btnSend = document.createElement("button");
+          btnSend.textContent = "Odeslat";
+
+          btnSend.addEventListener("click", async ()=>{
+            const text = textarea.value.trim();
+            if(!text) return;
+
+            await supabase.from("comments").insert({
+              section_id: sec.id,
+              author_email: user.email,
+              message: text,
+              is_complaint: chk.checked
+            });
+
+            textarea.value = "";
+            chk.checked = false;
+
+            btnComments.click();
+            btnComments.click();});
+          form.appendChild(textarea);
+          form.appendChild(chk);
+          form.appendChild(btnSend);
+          commentsBox.appendChild(form);}}});
+    container.appendChild(secWrap);});}
+  sections.forEach(sec=>{
+    const secWrap = document.createElement('div'); secWrap.className='panel section-row';
+    const header = document.createElement('div'); header.className='section-header';
+    const left = document.createElement('div');
+    const title = document.createElement('div'); title.className='section-title'; title.innerText = sec.name;
+    const person = document.createElement('div'); person.className='section-person'; person.innerText = sec.person || '';
+    left.appendChild(title);
+    left.appendChild(person);
+    const right = document.createElement('div');
+    right.className='center';
+    // edit & delete buttons (only if logged in)
+    if(user){
+      const btnDel = document.createElement('button'); btnDel.className='small'; btnDel.style.background='#d9534f';
+      btnDel.textContent = 'Smazat';
+      btnDel.addEventListener('click', async ()=>{
+        if(!confirm('Smazat úsek?')) return;
+        await deleteSection(sec.id);});
+      right.appendChild(btnDel);}
+    header.appendChild(left);
+    header.appendChild(right);
     secWrap.appendChild(header);
 
     // days row
@@ -334,13 +561,11 @@ function renderSections(){
         const next = nextState(current);
         cell.dataset.state = next;
         applyStateClass(cell, next);
-        await upsertState(sec.id, dayIndex, next);
-      });
+        await upsertState(sec.id, dayIndex, next);});
 
       // visually indicate scheduled days (border)
       if(scheduled){
-        cell.style.boxShadow = 'inset 0 -4px 0 rgba(11,111,158,0.06)';
-      }
+        cell.style.boxShadow = 'inset 0 -4px 0 rgba(11,111,158,0.06)';}
 
       // content: short label
       const label = document.createElement('div');
